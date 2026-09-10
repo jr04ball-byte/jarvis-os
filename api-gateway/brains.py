@@ -4,7 +4,7 @@ import asyncio
 import json
 import logging
 import time
-from typing import Any, AsyncGenerator, Dict, List, Optional
+from typing import Any, AsyncGenerator
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
@@ -33,21 +33,21 @@ class Message(BaseModel):
 
 
 class BrainRequest(BaseModel):
-    messages: List[Message]
+    messages: list[Message]
     brain: str = "auto"
     assistant_profile: str = "general"
-    temperature: Optional[float] = 0.7
-    max_tokens: Optional[int] = 1024
-    conversation_id: Optional[int] = None
-    mode: Optional[str] = None
-    workspace: Optional[str] = None
+    temperature: float | None = 0.7
+    max_tokens: int | None = 1024
+    conversation_id: int | None = None
+    mode: str | None = None
+    workspace: str | None = None
     permission: str = "read_only"
 
 
 class RouteRequest(BaseModel):
     text: str
     brain: str = "auto"
-    mode: Optional[str] = None
+    mode: str | None = None
     assistant_profile: str = "general"
 
 
@@ -58,15 +58,15 @@ providers = {
     OPENCODE: OpenCodeProvider(),
 }
 router_engine = IntelligenceRouter(providers)
-_STATUS_CACHE: Dict[str, Any] = {"ts": 0.0, "data": None}
+_STATUS_CACHE: dict[str, Any] = {"ts": 0.0, "data": None}
 _STATUS_LOCK = asyncio.Lock()
 
 
-def _messages(messages: List[Message]) -> List[ProviderMessage]:
+def _messages(messages: list[Message]) -> list[ProviderMessage]:
     return [ProviderMessage(role=m.role, content=m.content) for m in messages]
 
 
-def _last_user(messages: List[Message]) -> str:
+def _last_user(messages: list[Message]) -> str:
     for message in reversed(messages):
         if message.role == "user" and message.content.strip():
             return message.content
@@ -84,12 +84,12 @@ def classify(text: str, mode: str = "auto", profile: str = "general") -> str:
     return router_engine.decide(text, mode, profile).selected
 
 
-async def complete(req: BrainRequest) -> Dict[str, Any]:
+async def complete(req: BrainRequest) -> dict[str, Any]:
     text = _last_user(req.messages)
     decision = router_engine.decide(text, _requested(req), req.assistant_profile)
     messages = _messages(req.messages)
-    last_error: Optional[str] = None
-    attempts: List[Dict[str, Any]] = []
+    last_error: str | None = None
+    attempts: list[dict[str, Any]] = []
 
     chain = router_engine.eligible_chain(decision.chain)
     if not chain:
@@ -191,7 +191,7 @@ async def stream(req: BrainRequest) -> AsyncGenerator[str, None]:
     yield "data: [DONE]\n\n"
 
 
-async def status(force: bool = False, ttl_seconds: float = 10.0) -> Dict[str, Any]:
+async def status(force: bool = False, ttl_seconds: float = 10.0) -> dict[str, Any]:
     now = time.time()
     cached = _STATUS_CACHE.get("data")
     if not force and cached is not None and now - float(_STATUS_CACHE.get("ts") or 0) < max(1.0, ttl_seconds):
@@ -203,7 +203,7 @@ async def status(force: bool = False, ttl_seconds: float = 10.0) -> Dict[str, An
         if not force and cached is not None and now - float(_STATUS_CACHE.get("ts") or 0) < max(1.0, ttl_seconds):
             return cached
 
-        async def one(name: str, provider: Any) -> tuple[str, Dict[str, Any]]:
+        async def one(name: str, provider: Any) -> tuple[str, dict[str, Any]]:
             try:
                 health = await asyncio.wait_for(provider.health(), timeout=6.0)
             except asyncio.TimeoutError:

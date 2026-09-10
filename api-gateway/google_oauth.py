@@ -24,7 +24,7 @@ import os
 import secrets
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 from urllib.parse import urlencode
 
 import httpx
@@ -89,7 +89,7 @@ class TokenStore:
         _KEY_FILE.chmod(0o600)
         return Fernet(key)
 
-    def _load(self) -> Dict[str, Any]:
+    def _load(self) -> dict[str, Any]:
         if not self.path.exists():
             return {}
         try:
@@ -98,16 +98,16 @@ class TokenStore:
             logger.error("token decrypt failed: %s", e)
             return {}
 
-    def _save(self, data: Dict[str, Any]) -> None:
+    def _save(self, data: dict[str, Any]) -> None:
         self.path.write_bytes(self._fernet.encrypt(json.dumps(data).encode()))
         self.path.chmod(0o600)
 
-    def save_tokens(self, email: str, tokens: Dict[str, Any]) -> None:
+    def save_tokens(self, email: str, tokens: dict[str, Any]) -> None:
         data = self._load()
         data[email] = {**tokens, "saved_at": time.time()}
         self._save(data)
 
-    def load_tokens(self, email: str) -> Optional[Dict[str, Any]]:
+    def load_tokens(self, email: str) -> dict[str, Any] | None:
         return self._load().get(email)
 
     def delete_account(self, email: str) -> bool:
@@ -124,7 +124,7 @@ class TokenStore:
 
 # ---- State (CSRF + flow tracking) -----------------------------------------
 
-_state_store: Dict[str, float] = {}
+_state_store: dict[str, float] = {}
 _STATE_TTL = 600  # 10 minutes
 
 def _new_state() -> str:
@@ -162,7 +162,7 @@ def build_auth_url() -> str:
     }
     return f"{AUTH_URL}?{urlencode(params)}"
 
-async def exchange_code(code: str) -> Dict[str, Any]:
+async def exchange_code(code: str) -> dict[str, Any]:
     """Exchange auth code for tokens. Returns tokens dict + user email."""
     async with httpx.AsyncClient(timeout=15) as c:
         r = await c.post(TOKEN_URL, data={
@@ -186,7 +186,7 @@ async def exchange_code(code: str) -> Dict[str, Any]:
     tokens["scope"] = tokens.get("scope", "")
     return {"email": email, "tokens": tokens}
 
-async def refresh_if_needed(email: str, store: TokenStore) -> Dict[str, Any]:
+async def refresh_if_needed(email: str, store: TokenStore) -> dict[str, Any]:
     """Return a valid access_token, refreshing via refresh_token if expired."""
     tok = store.load_tokens(email)
     if not tok:
@@ -228,7 +228,7 @@ async def gmail_list_messages(email: str, store: TokenStore, max_results: int = 
         r.raise_for_status()
         return r.json().get("messages", [])
 
-async def calendar_list_events(email: str, store: TokenStore, max_results: int = 10, time_min: Optional[str] = None) -> list:
+async def calendar_list_events(email: str, store: TokenStore, max_results: int = 10, time_min: str | None = None) -> list:
     tok = await refresh_if_needed(email, store)
     async with httpx.AsyncClient(timeout=15) as c:
         params = {"maxResults": max_results, "singleEvents": "true", "orderBy": "startTime"}

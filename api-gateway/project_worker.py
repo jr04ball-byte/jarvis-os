@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import builtins
 import hashlib
 import json
 import os
@@ -12,7 +13,7 @@ import uuid
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Iterable
 
 SENSITIVE_NAMES = {'.env', '.env.local', '.env.production', '.env.development', 'id_rsa', 'id_ed25519'}
 SENSITIVE_SUFFIXES = {'.pem', '.p12', '.pfx', '.key'}
@@ -25,7 +26,7 @@ READ_CANDIDATES = [
 ]
 
 
-def _package_metadata(root: Path) -> Dict[str, Any]:
+def _package_metadata(root: Path) -> dict[str, Any]:
     package = root / 'package.json'
     if not package.exists():
         return {}
@@ -60,12 +61,12 @@ def _tool_available(name: str) -> bool:
     return shutil.which(name) is not None
 
 
-def project_health(workspace: str) -> Dict[str, Any]:
+def project_health(workspace: str) -> dict[str, Any]:
     """Read-only readiness evidence gathered before a worker is allowed to edit files."""
     root = _safe_resolve(workspace)
     commands = discover_commands(root)
     package = _package_metadata(root)
-    ecosystems: List[str] = []
+    ecosystems: list[str] = []
     if package:
         ecosystems.append('javascript')
     if (root / 'pyproject.toml').exists() or (root / 'requirements.txt').exists() or (root / 'pytest.ini').exists():
@@ -108,7 +109,7 @@ def project_health(workspace: str) -> Dict[str, Any]:
     }
 
 
-def classify_verification_failure(verification: Dict[str, Any]) -> Dict[str, Any]:
+def classify_verification_failure(verification: dict[str, Any]) -> dict[str, Any]:
     """Classify failed verification so Jarvis does not ask a coding agent to repair the machine/network."""
     if verification.get('ok'):
         return {'kind': 'none', 'confidence': 1.0, 'reasons': []}
@@ -125,8 +126,8 @@ def classify_verification_failure(verification: Dict[str, Any]) -> Dict[str, Any
         r'assertionerror', r'failed\s+tests?', r'\bsyntaxerror\b', r'\btypeerror\b', r'\breferenceerror\b',
         r'tests? failed', r'compilation failed', r'build failed', r'error ts\d+', r'pytest.*failed',
     ]
-    env_hits: List[str] = []
-    code_hits: List[str] = []
+    env_hits: list[str] = []
+    code_hits: list[str] = []
     for item in verification.get('commands_run') or []:
         if item.get('ok'):
             continue
@@ -149,7 +150,7 @@ def classify_verification_failure(verification: Dict[str, Any]) -> Dict[str, Any
 
 @dataclass
 class CommandEvidence:
-    command: List[str]
+    command: list[str]
     cwd: str
     ok: bool
     exit_code: int
@@ -157,7 +158,7 @@ class CommandEvidence:
     stderr: str
     elapsed_ms: int
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 
@@ -178,7 +179,7 @@ def _safe_file(path: Path) -> bool:
     return name not in SENSITIVE_NAMES and path.suffix.lower() not in SENSITIVE_SUFFIXES
 
 
-def run_command(command: List[str], workspace: str, timeout: int = 120) -> CommandEvidence:
+def run_command(command: list[str], workspace: str, timeout: int = 120) -> CommandEvidence:
     root = _safe_resolve(workspace)
     started = time.time()
     try:
@@ -201,7 +202,7 @@ def run_command(command: List[str], workspace: str, timeout: int = 120) -> Comma
                                int((time.time()-started)*1000))
 
 
-def _read_text(path: Path, max_chars: int = 30000) -> Optional[str]:
+def _read_text(path: Path, max_chars: int = 30000) -> str | None:
     if not path.is_file() or not _safe_file(path):
         return None
     try:
@@ -212,7 +213,7 @@ def _read_text(path: Path, max_chars: int = 30000) -> Optional[str]:
         return None
 
 
-def _top_level(root: Path) -> List[Dict[str, Any]]:
+def _top_level(root: Path) -> list[dict[str, Any]]:
     out = []
     for p in sorted(root.iterdir(), key=lambda x: (not x.is_dir(), x.name.lower()))[:200]:
         if p.name in SKIP_DIRS:
@@ -221,10 +222,10 @@ def _top_level(root: Path) -> List[Dict[str, Any]]:
     return out
 
 
-def discover_commands(root: Path) -> Dict[str, List[List[str]]]:
-    tests: List[List[str]] = []
-    builds: List[List[str]] = []
-    lint: List[List[str]] = []
+def discover_commands(root: Path) -> dict[str, list[list[str]]]:
+    tests: list[list[str]] = []
+    builds: list[list[str]] = []
+    lint: list[list[str]] = []
 
     package = root / 'package.json'
     if package.exists():
@@ -259,7 +260,7 @@ def discover_commands(root: Path) -> Dict[str, List[List[str]]]:
         if 'mypy' in text:
             lint.append(['python', '-m', 'mypy', '.'])
 
-    def uniq(items: List[List[str]]) -> List[List[str]]:
+    def uniq(items: list[list[str]]) -> list[list[str]]:
         seen = set(); out=[]
         for x in items:
             k=tuple(x)
@@ -268,12 +269,12 @@ def discover_commands(root: Path) -> Dict[str, List[List[str]]]:
     return {'tests': uniq(tests), 'builds': uniq(builds), 'lint': uniq(lint)}
 
 
-def _git_changed_paths(root: Path) -> List[str]:
+def _git_changed_paths(root: Path) -> list[str]:
     ev = run_command(['git', 'status', '--porcelain=v1', '-z'], str(root), 20)
     if ev.exit_code != 0:
         return []
     parts = ev.stdout.split('\x00')
-    paths: List[str] = []
+    paths: list[str] = []
     for part in parts:
         if not part or len(part) < 4:
             continue
@@ -299,7 +300,7 @@ def _iter_workspace_files(root: Path, max_files: int = 20000) -> Iterable[Path]:
                 return
 
 
-def _fingerprint(path: Path) -> Optional[str]:
+def _fingerprint(path: Path) -> str | None:
     try:
         if path.stat().st_size > 2_000_000:
             return f'size:{path.stat().st_size}:mtime:{path.stat().st_mtime_ns}'
@@ -312,10 +313,10 @@ def _fingerprint(path: Path) -> Optional[str]:
         return None
 
 
-def capture_workspace_baseline(workspace: str) -> Dict[str, Any]:
+def capture_workspace_baseline(workspace: str) -> dict[str, Any]:
     """Capture enough state to distinguish worker edits from pre-existing user changes."""
     root = _safe_resolve(workspace)
-    fingerprints: Dict[str, str] = {}
+    fingerprints: dict[str, str] = {}
     for p in _iter_workspace_files(root):
         fp = _fingerprint(p)
         if fp:
@@ -329,10 +330,10 @@ def capture_workspace_baseline(workspace: str) -> Dict[str, Any]:
     }
 
 
-def compare_workspace_baseline(workspace: str, baseline: Dict[str, Any]) -> Dict[str, Any]:
+def compare_workspace_baseline(workspace: str, baseline: dict[str, Any]) -> dict[str, Any]:
     root = _safe_resolve(workspace)
     before = baseline.get('fingerprints') or {}
-    after: Dict[str, str] = {}
+    after: dict[str, str] = {}
     for p in _iter_workspace_files(root):
         fp = _fingerprint(p)
         if fp:
@@ -348,9 +349,9 @@ def compare_workspace_baseline(workspace: str, baseline: Dict[str, Any]) -> Dict
     }
 
 
-def inspect_workspace(workspace: str) -> Dict[str, Any]:
+def inspect_workspace(workspace: str) -> dict[str, Any]:
     root = _safe_resolve(workspace)
-    evidence: Dict[str, Any] = {
+    evidence: dict[str, Any] = {
         'workspace': str(root),
         'top_level': _top_level(root),
         'files': {},
@@ -382,7 +383,7 @@ def inspect_workspace(workspace: str) -> Dict[str, Any]:
     return evidence
 
 
-def capture_git_diff(workspace: str) -> Dict[str, Any]:
+def capture_git_diff(workspace: str) -> dict[str, Any]:
     root = _safe_resolve(workspace)
     status = run_command(['git', 'status', '--short'], str(root), 20)
     diff = run_command(['git', 'diff', '--no-ext-diff', '--'], str(root), 30)
@@ -390,17 +391,17 @@ def capture_git_diff(workspace: str) -> Dict[str, Any]:
     return {'status': status.as_dict(), 'diff': diff.as_dict(), 'staged_diff': staged.as_dict()}
 
 
-def select_verification_commands(workspace: str, changed_paths: Optional[List[str]] = None,
+def select_verification_commands(workspace: str, changed_paths: list[str] | None = None,
                                  *, run_tests: bool = True, run_build: bool = True,
-                                 run_lint: bool = False, max_commands: int = 4) -> List[List[str]]:
+                                 run_lint: bool = False, max_commands: int = 4) -> list[list[str]]:
     root = _safe_resolve(workspace)
     discovered = discover_commands(root)
-    selected: List[List[str]] = []
+    selected: list[list[str]] = []
     changed_paths = changed_paths or []
 
     if run_tests:
         package = _package_metadata(root)
-        targeted_js: List[str] = []
+        targeted_js: list[str] = []
         if package and package.get('scripts', {}).get('test'):
             for rel in changed_paths:
                 low = rel.lower().replace('\\', '/')
@@ -419,7 +420,7 @@ def select_verification_commands(workspace: str, changed_paths: Optional[List[st
                 elif runner == 'bun':
                     selected.append(['bun', 'test', *targeted_js[:8]])
 
-        targeted_py: List[str] = []
+        targeted_py: list[str] = []
         for rel in changed_paths:
             p = Path(rel)
             if rel.startswith('tests/') and p.suffix == '.py' and (root / rel).exists():
@@ -442,7 +443,7 @@ def select_verification_commands(workspace: str, changed_paths: Optional[List[st
     if run_lint and discovered['lint']:
         selected.append(discovered['lint'][0])
 
-    out: List[List[str]] = []
+    out: list[list[str]] = []
     seen = set()
     for cmd in selected:
         k = tuple(cmd)
@@ -452,7 +453,7 @@ def select_verification_commands(workspace: str, changed_paths: Optional[List[st
 
 
 def verify_workspace(workspace: str, *, run_tests: bool = True, run_build: bool = True, run_lint: bool = False,
-                     max_commands: int = 4, changed_paths: Optional[List[str]] = None) -> Dict[str, Any]:
+                     max_commands: int = 4, changed_paths: list[str] | None = None) -> dict[str, Any]:
     root = _safe_resolve(workspace)
     discovered = discover_commands(root)
     selected = select_verification_commands(str(root), changed_paths, run_tests=run_tests, run_build=run_build,
@@ -469,8 +470,8 @@ def verify_workspace(workspace: str, *, run_tests: bool = True, run_build: bool 
     return payload
 
 
-def make_worker_prompt(goal: str, workspace: str, inspection: Dict[str, Any], *, permission: str = 'workspace_write',
-                       baseline: Optional[Dict[str, Any]] = None) -> str:
+def make_worker_prompt(goal: str, workspace: str, inspection: dict[str, Any], *, permission: str = 'workspace_write',
+                       baseline: dict[str, Any] | None = None) -> str:
     compact = {
         'workspace': inspection.get('workspace'),
         'git': inspection.get('git'),
@@ -500,7 +501,7 @@ BOUNDARIES:
 '''
 
 
-def make_repair_prompt(goal: str, workspace: str, verification: Dict[str, Any], delta: Dict[str, Any], attempt: int) -> str:
+def make_repair_prompt(goal: str, workspace: str, verification: dict[str, Any], delta: dict[str, Any], attempt: int) -> str:
     failures = []
     for item in verification.get('commands_run') or []:
         if not item.get('ok'):
@@ -548,7 +549,7 @@ class WorkerRunStore:
         finally:
             conn.close()
 
-    def create(self, target: str, workspace: str, goal: str, baseline: Dict[str, Any]) -> Dict[str, Any]:
+    def create(self, target: str, workspace: str, goal: str, baseline: dict[str, Any]) -> dict[str, Any]:
         run_id = str(uuid.uuid4())
         now = int(time.time())
         with self._connect() as conn:
@@ -556,7 +557,7 @@ class WorkerRunStore:
                          (run_id, target, workspace, goal, 'running', '[]', json.dumps(baseline), now, now))
         return self.get(run_id)
 
-    def get(self, run_id: str) -> Dict[str, Any]:
+    def get(self, run_id: str) -> dict[str, Any]:
         with self._connect() as conn:
             row = conn.execute('SELECT * FROM worker_runs WHERE id=?', (run_id,)).fetchone()
         if not row:
@@ -567,7 +568,7 @@ class WorkerRunStore:
             'created_at': row[7], 'updated_at': row[8],
         }
 
-    def list(self, limit: int = 20) -> List[Dict[str, Any]]:
+    def list(self, limit: int = 20) -> builtins.list[dict[str, Any]]:
         """Return recent worker runs without repository contents or secrets."""
         cap = max(1, min(int(limit), 100))
         with self._connect() as conn:
@@ -575,7 +576,7 @@ class WorkerRunStore:
                 'SELECT id,target,workspace,goal,status,attempts_json,created_at,updated_at FROM worker_runs ORDER BY updated_at DESC LIMIT ?',
                 (cap,),
             ).fetchall()
-        out: List[Dict[str, Any]] = []
+        out: list[dict[str, Any]] = []
         for row in rows:
             try:
                 attempts = json.loads(row[5])
@@ -588,7 +589,7 @@ class WorkerRunStore:
             })
         return out
 
-    def update(self, run_id: str, *, status: Optional[str] = None, attempt: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def update(self, run_id: str, *, status: str | None = None, attempt: dict[str, Any] | None = None) -> dict[str, Any]:
         current = self.get(run_id)
         attempts = current['attempts']
         if attempt is not None:

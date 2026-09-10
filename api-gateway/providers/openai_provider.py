@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import httpx
 
@@ -35,28 +35,28 @@ class OpenAIProvider(ProviderAdapter):
         return bool(self.api_key)
 
     @staticmethod
-    def _input(messages: List[ProviderMessage]) -> List[Dict[str, Any]]:
-        out: List[Dict[str, Any]] = []
+    def _input(messages: list[ProviderMessage]) -> list[dict[str, Any]]:
+        out: list[dict[str, Any]] = []
         for msg in messages[-100:]:
             role = msg.role if msg.role in {"system", "user", "assistant"} else "user"
             out.append({"role": role, "content": msg.content})
         return out
 
     @staticmethod
-    def _output_text(data: Dict[str, Any]) -> str:
+    def _output_text(data: dict[str, Any]) -> str:
         if isinstance(data.get("output_text"), str):
             return data["output_text"]
-        chunks: List[str] = []
+        chunks: list[str] = []
         for item in data.get("output") or []:
             for content in item.get("content") or []:
                 if content.get("type") in {"output_text", "text"} and isinstance(content.get("text"), str):
                     chunks.append(content["text"])
         return "".join(chunks)
 
-    async def complete(self, messages: List[ProviderMessage], *, temperature: float = 0.7, max_tokens: int = 1024, task_context: Optional[Dict[str, Any]] = None) -> ProviderResult:
+    async def complete(self, messages: list[ProviderMessage], *, temperature: float = 0.7, max_tokens: int = 1024, task_context: dict[str, Any] | None = None) -> ProviderResult:
         if not self.configured:
             raise RuntimeError("openai not configured")
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "model": self.model,
             "input": self._input(messages),
             "max_output_tokens": max(1, min(int(max_tokens), 32768)),
@@ -86,7 +86,7 @@ class OpenAIProvider(ProviderAdapter):
             metadata={"response_id": data.get("id")},
         )
 
-    async def health(self) -> Dict[str, Any]:
+    async def health(self) -> dict[str, Any]:
         if not self.configured:
             return {"online": False, "configured": False, "reason": "missing OPENAI_API_KEY"}
         try:

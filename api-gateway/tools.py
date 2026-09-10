@@ -9,7 +9,7 @@ import platform
 import re
 import subprocess
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 
@@ -109,7 +109,7 @@ async def ha_call(domain: str, service: str, data: dict[str, Any]) -> dict[str, 
         r=await c.post(f"{HA_URL}/api/services/{domain}/{service}",json=data,headers=headers)
         r.raise_for_status(); return {"ok":True,"domain":domain,"service":service,"result":r.json()}
 
-async def ha_entities(domains: Optional[list[str]] = None) -> list[dict[str, Any]]:
+async def ha_entities(domains: list[str] | None = None) -> list[dict[str, Any]]:
     """Return a compact, safe device inventory for agent selection."""
     states = await ha_states()
     allowed_domains = set(domains or ["light","switch","fan","climate","media_player"])
