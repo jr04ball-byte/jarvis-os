@@ -1,0 +1,34 @@
+jarvis-os/
+│
+├── apps/
+│   ├── dashboard/
+│   ├── api/
+│   ├── desktop/
+│   └── voice/
+│
+├── packages/
+│   ├── core/
+│   ├── router/
+│   ├── memory/
+│   ├── providers/
+│   ├── workers/
+│   ├── verification/
+│   ├── security/
+│   ├── tools/
+│   └── ui/
+│
+├── assets/
+│   ├── blender/
+│   ├── icons/
+│   └── branding/
+│
+├── tests/
+│
+├── docs/
+│
+├── docker/
+│
+├── scripts/
+│
+└── .github/
+    └── workflows/
