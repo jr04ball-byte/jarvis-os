@@ -33,11 +33,59 @@ def data_dir() -> Path:
 ORCHESTRATOR_DB = data_dir() / "orchestrator.db"
 PROJECT_WORKER_DB = ORCHESTRATOR_DB.parent / "project_worker.db"
 
-db = ConversationDB()
-rag = DocumentRAG()
-monitor = PerformanceMonitor()
-orchestrator = OrchestratorStore(ORCHESTRATOR_DB)
-project_worker_runs = WorkerRunStore(str(PROJECT_WORKER_DB))
+
+class AppContainer:
+    """Service locator (V24 P3 step toward full dependency injection).
+
+    Owns construction of the durable services so there is exactly one place
+    that knows *how* they are built. Instances are singletons; tests can
+    swap any service via override()/reset() without touching globals.
+    Constructor injection at call sites is the planned follow-up.
+    """
+
+    def __init__(self) -> None:
+        self._lock = threading.RLock()
+        self._factories = {
+            "db": ConversationDB,
+            "rag": DocumentRAG,
+            "monitor": PerformanceMonitor,
+            "orchestrator": lambda: OrchestratorStore(ORCHESTRATOR_DB),
+            "project_worker_runs": lambda: WorkerRunStore(str(PROJECT_WORKER_DB)),
+        }
+        self._instances: dict[str, Any] = {}
+        self._overrides: dict[str, Any] = {}
+
+    def get(self, name: str) -> Any:
+        if name in self._overrides:
+            return self._overrides[name]
+        with self._lock:
+            if name not in self._instances:
+                try:
+                    factory = self._factories[name]
+                except KeyError:
+                    raise KeyError(f"unknown service: {name}") from None
+                self._instances[name] = factory()
+            return self._instances[name]
+
+    def override(self, name: str, instance: Any) -> None:
+        if name not in self._factories:
+            raise KeyError(f"unknown service: {name}")
+        self._overrides[name] = instance
+
+    def reset(self, name: str | None = None) -> None:
+        if name is None:
+            self._overrides.clear()
+        else:
+            self._overrides.pop(name, None)
+
+
+container = AppContainer()
+
+db = container.get("db")
+rag = container.get("rag")
+monitor = container.get("monitor")
+orchestrator = container.get("orchestrator")
+project_worker_runs = container.get("project_worker_runs")
 
 
 # ---- Configuration + rate limiting (moved from main.py in V24 P2) ----
