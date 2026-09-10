@@ -137,6 +137,7 @@ def test_command_center_overview_is_redacted(monkeypatch):
 
     main = importlib.import_module("main")
     services = importlib.import_module("services")
+    telemetry = importlib.import_module("routes.telemetry")
     secret = "SERVER_SIDE_SECRET_SENTINEL"
     monkeypatch.setattr(services, "GEMINI_API_KEY", secret)
 
@@ -151,8 +152,8 @@ def test_command_center_overview_is_redacted(monkeypatch):
     async def fake_compute(ttl=5.0):
         return {"mode": "test", "gpu": {"available": False}}
 
-    monkeypatch.setattr(main, "brain_status_snapshot", fake_brains)
-    monkeypatch.setattr(main, "_cached_compute_snapshot", fake_compute)
+    monkeypatch.setattr(telemetry, "brain_status_snapshot", fake_brains)
+    monkeypatch.setattr(telemetry, "_cached_compute_snapshot", fake_compute)
     client = TestClient(main.app)
     response = client.get("/v1/command-center/overview")
     assert response.status_code == 200
@@ -193,7 +194,7 @@ def test_live_token_endpoint_returns_only_ephemeral_credential(monkeypatch):
             assert json["uses"] == 1
             return FakeResponse()
 
-    monkeypatch.setattr(main.httpx, "AsyncClient", FakeAsyncClient)
+    monkeypatch.setattr(chat.httpx, "AsyncClient", FakeAsyncClient)
     client = TestClient(main.app)
     response = client.post("/v1/gemini/live-token", json={"ttl_minutes": 10})
     assert response.status_code == 200
