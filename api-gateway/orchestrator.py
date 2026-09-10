@@ -18,8 +18,8 @@ from typing import Any
 
 from workspace_registry import context_for
 
-DEEP_RE = re.compile(r"\b(code|coding|debug|build|implement|refactor|architect|architecture|research|analy[sz]e|security|database|sql|python|javascript|typescript|docker|deploy|test|fix)\b", re.I)
-TOOL_RE = re.compile(r"\b(send|email|gmail|calendar|schedule|remind|open|launch|create|delete|remove|cancel|control|turn on|turn off|play|pause|volume|file|folder|computer|screen|blender|home assistant)\b", re.I)
+DEEP_RE = re.compile(r"\b(code|coding|debug|build|implement|refactor|architect|architecture|research|analy[sz]e|security|database|sql|python|javascript|typescript|docker|deploy|test|fix)\b", re.IGNORECASE)
+TOOL_RE = re.compile(r"\b(send|email|gmail|calendar|schedule|remind|open|launch|create|delete|remove|cancel|control|turn on|turn off|play|pause|volume|file|folder|computer|screen|blender|home assistant)\b", re.IGNORECASE)
 
 STATUS = {"pending", "ready", "running", "blocked", "awaiting_approval", "completed", "failed", "cancelled"}
 TERMINAL = {"completed", "failed", "cancelled"}
