@@ -6,7 +6,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     env:
-      API_DATA_DIR: ${{ runner.temp }}/jarvis-data
+      API_DATA_DIR: ./data
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
