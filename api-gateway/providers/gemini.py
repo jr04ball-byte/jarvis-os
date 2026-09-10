@@ -29,8 +29,8 @@ class GeminiProvider(ProviderAdapter):
     supports_stream = True
     supports_tools = True
 
-    def __init__(self) -> None:
-        super().__init__(_env("GEMINI_MODEL", "gemini-3.5-flash"))
+    def __init__(self, model: str | None = None) -> None:
+        super().__init__(model or _env("GEMINI_MODEL", "gemini-3.5-flash"))
         self.api_key = _env("GEMINI_API_KEY")
         self.base_url = _env("GEMINI_BASE", "https://generativelanguage.googleapis.com/v1beta").rstrip("/")
 

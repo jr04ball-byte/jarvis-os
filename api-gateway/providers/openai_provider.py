@@ -24,8 +24,8 @@ class OpenAIProvider(ProviderAdapter):
     supports_stream = False
     supports_tools = True
 
-    def __init__(self) -> None:
-        super().__init__(_env("OPENAI_MODEL", "gpt-5.6"))
+    def __init__(self, model: str | None = None) -> None:
+        super().__init__(model or _env("OPENAI_MODEL", "gpt-5.6"))
         self.api_key = _env("OPENAI_API_KEY")
         self.base_url = _env("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
         self.reasoning_effort = _env("OPENAI_REASONING_EFFORT", "medium")
