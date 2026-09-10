@@ -48,9 +48,12 @@ def test_system_prompt_does_not_change_voice_path():
 
 
 def test_voice_turn_endpoint_wiring():
-    src = (Path(__file__).resolve().parents[1] / 'api-gateway' / 'main.py').read_text(encoding='utf-8')
+    gateway = Path(__file__).resolve().parents[1] / 'api-gateway'
+    src = (gateway / 'main.py').read_text(encoding='utf-8')
     assert '@app.post("/v1/voice/turn")' in src
-    assert 'class VoiceTurnRequest' in src
+    # V24 P0: request models live in schemas.py; main.py must import the one it wires.
+    assert 'class VoiceTurnRequest' in (gateway / 'schemas.py').read_text(encoding='utf-8')
+    assert 'VoiceTurnRequest' in src
     assert 'StreamingResponse(' in src
     assert 'X-Voice-Model' in src
     assert 'stream_chat(stream_request)' in src
