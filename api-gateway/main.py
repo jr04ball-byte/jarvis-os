@@ -26,7 +26,7 @@ from deps import (
     project_worker_runs,
     rag,
 )
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import (
     JSONResponse,
@@ -56,7 +56,6 @@ try:
 except ImportError:
     pass
 
-import google_oauth  # Google OAuth2 flow (Gmail + Calendar)
 from brains import router as brain_router
 from brains import status as brain_status_snapshot
 from routes import chat, dashboard, health, voice, workers
@@ -99,9 +98,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from routes import projects, providers
+from routes import auth, projects, providers
 
 app.include_router(brain_router)
+app.include_router(auth.router)
 app.include_router(providers.router)
 app.include_router(projects.router)
 app.include_router(workers.router)
@@ -282,84 +282,6 @@ async def command_center_overview(request: Request):
 # Reuses GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET from email-agent-saas .env
 # On first run: visit http://localhost:8000/auth/google/start
 # Tokens are encrypted at rest in api_data volume.
-
-@app.get("/auth/google/start")
-async def auth_google_start():
-    """Begin Google OAuth — returns the URL the user should visit."""
-    if not google_oauth.CLIENT_ID:
-        raise HTTPException(503, "Google OAuth not configured (GOOGLE_CLIENT_ID missing)")
-    return {"url": google_oauth.build_auth_url()}
-
-@app.get("/auth/google/callback")
-async def auth_google_callback(code: str | None = None, state: str | None = None, error: str | None = None):
-    """Google redirects here after user consents. Exchanges code → tokens,
-    stores them encrypted, returns the connected account email."""
-    if error:
-        raise HTTPException(400, f"Google OAuth failed: {error}")
-    if not code or not state:
-        raise HTTPException(400, "missing code or state (did you deny consent?)")
-    if not google_oauth._consume_state(state):
-        raise HTTPException(400, "invalid or expired state token")
-    try:
-        result = await google_oauth.exchange_code(code)
-    except httpx.HTTPStatusError as e:
-        raise HTTPException(400, f"token exchange failed: {e.response.text}")
-    store = google_oauth.TokenStore()
-    store.save_tokens(result["email"], result["tokens"])
-    logger.info("Google account connected: %s", result["email"])
-    return {"ok": True, "email": result["email"], "scopes": result["tokens"].get("scope", "")}
-
-@app.get("/auth/google/status")
-async def auth_google_status():
-    """List connected Google accounts and whether their tokens are still valid."""
-    store = google_oauth.TokenStore()
-    accounts = []
-    for email in store.list_accounts():
-        tok = store.load_tokens(email)
-        if not tok:
-            continue
-        expires_at = tok.get("saved_at", 0) + int(tok.get("expires_in", 3600))
-        accounts.append({
-            "email": email,
-            "scopes": tok.get("scope", ""),
-            "expires_at": expires_at,
-            "needs_refresh": time.time() >= expires_at - 60,
-            "has_refresh_token": "refresh_token" in tok,
-        })
-    return {"accounts": accounts, "configured": bool(google_oauth.CLIENT_ID)}
-
-@app.post("/auth/google/disconnect")
-async def auth_google_disconnect(email: str):
-    """Forget a connected account (revokes locally; doesn't revoke on Google's side)."""
-    store = google_oauth.TokenStore()
-    if store.delete_account(email):
-        return {"ok": True, "email": email}
-    raise HTTPException(404, f"no tokens stored for {email}")
-
-@app.get("/gmail/messages")
-async def gmail_messages(email: str, max_results: int = 20, query: str = ""):
-    """List recent Gmail messages for the connected account. Read-only."""
-    store = google_oauth.TokenStore()
-    try:
-        msgs = await google_oauth.gmail_list_messages(email, store, max_results, query)
-    except PermissionError as e:
-        raise HTTPException(401, str(e))
-    except httpx.HTTPStatusError as e:
-        raise HTTPException(e.response.status_code, e.response.text)
-    return {"email": email, "count": len(msgs), "messages": msgs}
-
-@app.get("/calendar/events")
-async def calendar_events(email: str, max_results: int = 10):
-    """List upcoming calendar events for the connected account."""
-    time_min = datetime.now(timezone.utc).isoformat()
-    store = google_oauth.TokenStore()
-    try:
-        events = await google_oauth.calendar_list_events(email, store, max_results, time_min)
-    except PermissionError as e:
-        raise HTTPException(401, str(e))
-    except httpx.HTTPStatusError as e:
-        raise HTTPException(e.response.status_code, e.response.text)
-    return {"email": email, "count": len(events), "events": events}
 
 
 # ==================== Local Tool / Device Layer ====================
