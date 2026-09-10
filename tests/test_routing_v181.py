@@ -3,18 +3,17 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'api-gateway'))
-import main
-from main import ChatMessage, apply_system_prompt
-
-FAST = main.FAST_MODEL
-DEEP = main.DEEP_MODEL
+from schemas import DEEP_MODEL as DEEP
+from schemas import FAST_MODEL as FAST
+from schemas import TOOL_MODEL, ChatMessage
+from services import apply_system_prompt, select_agent_model, select_model
 
 
 def route(text, profile='general'):
     """Route exactly like the chat-completions call site: system prompt
     injected, then non-system messages passed to select_model."""
     msgs = apply_system_prompt([ChatMessage(role='user', content=text)], profile)
-    return main.select_model('auto', [m.model_dump() for m in msgs if m.role != 'system'], profile)
+    return select_model('auto', [m.model_dump() for m in msgs if m.role != 'system'], profile)
 
 
 def test_a_joke_goes_fast():
@@ -49,10 +48,10 @@ def test_f_system_prompt_cannot_force_deep():
     # ever passes unfiltered messages (regression guard for V17.1).
     msgs = [m.model_dump() for m in apply_system_prompt([ChatMessage(role='user', content='Tell me a joke')], 'general')]
     assert any(m['role'] == 'system' for m in msgs)  # sanity: system present
-    assert main.select_model('auto', msgs, 'general') == FAST
+    assert select_model('auto', msgs, 'general') == FAST
 
 
 def test_explicit_and_sales_rules_preserved():
-    assert main.select_model('qwen3.5:9b', [{'role': 'user', 'content': 'hi'}], 'general') == 'qwen3.5:9b'
-    assert main.select_model('auto', [{'role': 'user', 'content': 'hi'}], 'sales') == FAST
-    assert main.select_agent_model('auto', [{'role': 'user', 'content': 'hi'}], 'general') == main.TOOL_MODEL
+    assert select_model('qwen3.5:9b', [{'role': 'user', 'content': 'hi'}], 'general') == 'qwen3.5:9b'
+    assert select_model('auto', [{'role': 'user', 'content': 'hi'}], 'sales') == FAST
+    assert select_agent_model('auto', [{'role': 'user', 'content': 'hi'}], 'general') == TOOL_MODEL

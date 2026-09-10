@@ -95,12 +95,26 @@ def test_blender_command_center_sources_are_shipped():
 def test_gemini_live_never_returns_permanent_api_key_in_source():
     source = (ROOT / "api-gateway" / "main.py").read_text(encoding="utf-8")
     assert '"token": GEMINI_API_KEY' not in source
-    assert "auth_tokens" in source
-    assert "BidiGenerateContentConstrained" in source
+    # V24 P2: endpoint config lives in deps.py; the constrained-endpoint
+    # pinning moves with it.
+    config = (ROOT / "api-gateway" / "deps.py").read_text(encoding="utf-8")
+    assert "auth_tokens" in config
+    assert "BidiGenerateContentConstrained" in config
     voice = (ROOT / "api-gateway" / "voice-live.html").read_text(encoding="utf-8")
     assert "access_token=" in voice
     assert "run_project_worker" in voice
     assert "/v1/project-worker/autofix" in voice
+
+
+def test_app_assembly_has_security_and_logging_middleware():
+    """V24 P2: the auth gate must never be silently dropped during refactors."""
+    import importlib
+
+    main = importlib.import_module("main")
+    assert callable(main.api_auth)
+    assert callable(main.log_requests)
+    middlewares = [m.cls.__name__ for m in main.app.user_middleware]
+    assert middlewares.count("CORSMiddleware") == 1
 
 
 def test_fastapi_v23_smoke_and_dashboard_assets(monkeypatch):
@@ -133,8 +147,10 @@ def test_command_center_overview_is_redacted(monkeypatch):
     from fastapi.testclient import TestClient
 
     main = importlib.import_module("main")
+    services = importlib.import_module("services")
+    telemetry = importlib.import_module("routes.telemetry")
     secret = "SERVER_SIDE_SECRET_SENTINEL"
-    monkeypatch.setattr(main, "GEMINI_API_KEY", secret)
+    monkeypatch.setattr(services, "GEMINI_API_KEY", secret)
 
     async def fake_brains():
         return {
@@ -147,8 +163,8 @@ def test_command_center_overview_is_redacted(monkeypatch):
     async def fake_compute(ttl=5.0):
         return {"mode": "test", "gpu": {"available": False}}
 
-    monkeypatch.setattr(main, "brain_status_snapshot", fake_brains)
-    monkeypatch.setattr(main, "_cached_compute_snapshot", fake_compute)
+    monkeypatch.setattr(telemetry, "brain_status_snapshot", fake_brains)
+    monkeypatch.setattr(telemetry, "_cached_compute_snapshot", fake_compute)
     client = TestClient(main.app)
     response = client.get("/v1/command-center/overview")
     assert response.status_code == 200
@@ -166,8 +182,9 @@ def test_live_token_endpoint_returns_only_ephemeral_credential(monkeypatch):
     from fastapi.testclient import TestClient
 
     main = importlib.import_module("main")
+    chat = importlib.import_module("routes.chat")
     permanent = "PERMANENT_GEMINI_KEY_SENTINEL"
-    monkeypatch.setattr(main, "GEMINI_API_KEY", permanent)
+    monkeypatch.setattr(chat, "GEMINI_API_KEY", permanent)
 
     class FakeResponse:
         status_code = 200
@@ -188,7 +205,7 @@ def test_live_token_endpoint_returns_only_ephemeral_credential(monkeypatch):
             assert json["uses"] == 1
             return FakeResponse()
 
-    monkeypatch.setattr(main.httpx, "AsyncClient", FakeAsyncClient)
+    monkeypatch.setattr(chat.httpx, "AsyncClient", FakeAsyncClient)
     client = TestClient(main.app)
     response = client.post("/v1/gemini/live-token", json={"ttl_minutes": 10})
     assert response.status_code == 200
@@ -213,11 +230,10 @@ def test_legacy_opencode_write_endpoint_fails_closed():
 
 
 def test_all_declared_agent_tools_exist_in_security_policy():
-    import importlib
-    main = importlib.import_module("main")
+    from services import AGENT_TOOLS
     names = {
         item.get("function", {}).get("name")
-        for item in main.AGENT_TOOLS
+        for item in AGENT_TOOLS
         if isinstance(item, dict)
     }
     assert names
