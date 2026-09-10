@@ -105,6 +105,7 @@ def test_gemini_live_never_returns_permanent_api_key_in_source():
 
 def test_fastapi_v23_smoke_and_dashboard_assets(monkeypatch):
     import importlib
+
     from fastapi.testclient import TestClient
 
     main = importlib.import_module("main")
@@ -128,6 +129,7 @@ def test_fastapi_v23_smoke_and_dashboard_assets(monkeypatch):
 
 def test_command_center_overview_is_redacted(monkeypatch):
     import importlib
+
     from fastapi.testclient import TestClient
 
     main = importlib.import_module("main")
@@ -160,6 +162,7 @@ def test_command_center_overview_is_redacted(monkeypatch):
 
 def test_live_token_endpoint_returns_only_ephemeral_credential(monkeypatch):
     import importlib
+
     from fastapi.testclient import TestClient
 
     main = importlib.import_module("main")
@@ -199,6 +202,7 @@ def test_live_token_endpoint_returns_only_ephemeral_credential(monkeypatch):
 
 def test_legacy_opencode_write_endpoint_fails_closed():
     import importlib
+
     from fastapi.testclient import TestClient
 
     main = importlib.import_module("main")

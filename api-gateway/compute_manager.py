@@ -10,8 +10,6 @@ import subprocess
 import time
 from typing import Any
 
-import httpx
-
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3.5:9b")
 COMPUTE_MODE = os.getenv("JARVIS_COMPUTE_MODE", "auto").strip().lower()

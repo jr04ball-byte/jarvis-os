@@ -8,10 +8,15 @@ from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
-
 from intelligence_router import IntelligenceRouter
-from providers import GeminiProvider, OllamaProvider, OpenAIProvider, OpenCodeProvider, ProviderMessage
+from providers import (
+    GeminiProvider,
+    OllamaProvider,
+    OpenAIProvider,
+    OpenCodeProvider,
+    ProviderMessage,
+)
+from pydantic import BaseModel
 
 logger = logging.getLogger("brains")
 

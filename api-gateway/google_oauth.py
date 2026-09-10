@@ -18,13 +18,13 @@ Scopes requested (least-privilege, expand as needed):
   - calendar          — full calendar access (events, free/busy)
   - userinfo.email    — identify which Google account is connected
 """
-import os
 import json
-import time
 import logging
+import os
 import secrets
+import time
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 from urllib.parse import urlencode
 
 import httpx

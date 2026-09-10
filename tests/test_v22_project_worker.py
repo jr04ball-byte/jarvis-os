@@ -5,7 +5,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'api-gateway'))
 
-from project_worker import discover_commands, inspect_workspace, verify_workspace, make_worker_prompt
+from project_worker import (
+    discover_commands,
+    inspect_workspace,
+    make_worker_prompt,
+    verify_workspace,
+)
 
 
 def test_discovers_python_tests(tmp_path):

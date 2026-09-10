@@ -1,16 +1,28 @@
-from fastapi import FastAPI, HTTPException, Request, UploadFile, File
+from compute_manager import select_mode
+from compute_manager import snapshot as compute_snapshot
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, FileResponse, RedirectResponse, JSONResponse
+from fastapi.responses import (
+    FileResponse,
+    JSONResponse,
+    StreamingResponse,
+)
+from model_lab import benchmark as model_lab_benchmark
+from model_lab import hf_search as model_lab_hf_search
+from model_lab import lm_load as model_lab_lm_load
+from model_lab import lm_unload as model_lab_lm_unload
+from model_lab import lmstudio_inventory as model_lab_lmstudio
+from model_lab import ollama_inventory as model_lab_ollama
+from model_lab import overview as model_lab_overview
 from pydantic import BaseModel, Field
-from compute_manager import select_mode, snapshot as compute_snapshot
-from model_lab import overview as model_lab_overview, hf_search as model_lab_hf_search, lm_load as model_lab_lm_load, lm_unload as model_lab_lm_unload, ollama_inventory as model_lab_ollama, lmstudio_inventory as model_lab_lmstudio, benchmark as model_lab_benchmark
+
 # slowapi is preferred in production.  When the package is unavailable (for
 # example in an offline bootstrap environment), use a small in-process limiter
 # so Jarvis remains protected instead of failing to start.
 try:
     from slowapi import Limiter
-    from slowapi.util import get_remote_address
     from slowapi.errors import RateLimitExceeded
+    from slowapi.util import get_remote_address
 except ImportError:
     from collections import defaultdict, deque
     from functools import wraps
@@ -58,20 +70,22 @@ except ImportError:
                     return await func(*args, **kwargs)
                 return wrapped
             return decorator
-import httpx
 import asyncio
-import os
-import time
 import json
-import sqlite3
 import logging
-import threading
-import secrets
+import os
 import re
-from typing import Optional, List, Dict, Any, Literal
+import secrets
+import sqlite3
+import threading
+import time
 from collections import defaultdict, deque
-from datetime import datetime, timezone, timedelta
+from contextlib import contextmanager
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Any, List, Literal, Optional
+
+import httpx
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -85,19 +99,28 @@ except ImportError:
     pass
 
 import google_oauth  # Google OAuth2 flow (Gmail + Calendar)
-import tools
 import local_tools
-from brains import router as brain_router, providers as intelligence_providers, status as brain_status_snapshot, router_engine as intelligence_router_engine
+from brains import providers as intelligence_providers
+from brains import router as brain_router
+from brains import status as brain_status_snapshot
 from orchestrator import OrchestratorStore
-from workspace_registry import snapshot as workspace_snapshot, get_target as workspace_target, is_registered_workspace, target_for_workspace
-from security import policy_snapshot as security_policy_snapshot, requires_confirmation, allowed as tool_allowed
+from project_worker import WorkerRunStore, make_repair_prompt, make_worker_prompt
+from project_worker import capture_git_diff as project_capture_diff
+from project_worker import capture_workspace_baseline as project_capture_baseline
+from project_worker import classify_verification_failure as project_classify_failure
+from project_worker import compare_workspace_baseline as project_compare_baseline
+from project_worker import inspect_workspace as project_inspect_workspace
+from project_worker import project_health as project_worker_health_snapshot
+from project_worker import verify_workspace as project_verify_workspace
 from providers import ProviderMessage
-from project_worker import (
-    inspect_workspace as project_inspect_workspace, verify_workspace as project_verify_workspace,
-    capture_git_diff as project_capture_diff, capture_workspace_baseline as project_capture_baseline,
-    compare_workspace_baseline as project_compare_baseline, make_worker_prompt, make_repair_prompt, WorkerRunStore,
-    project_health as project_worker_health_snapshot, classify_verification_failure as project_classify_failure
-)
+from security import allowed as tool_allowed
+from security import policy_snapshot as security_policy_snapshot
+from security import requires_confirmation
+from workspace_registry import get_target as workspace_target
+from workspace_registry import is_registered_workspace, target_for_workspace
+from workspace_registry import snapshot as workspace_snapshot
+
+import tools
 
 # Logging setup
 logging.basicConfig(
@@ -362,8 +385,14 @@ class ConversationDB:
         self._lock = threading.Lock()
         self.create_tables()
 
+    @contextmanager
     def _connect(self):
-        return sqlite3.connect(self.db_path, timeout=10.0)
+        conn = sqlite3.connect(self.db_path, timeout=10.0)
+        try:
+            yield conn
+            conn.commit()
+        finally:
+            conn.close()
 
     def create_tables(self):
         with self._lock, self._connect() as conn:
@@ -471,8 +500,14 @@ class DocumentRAG:
         self._load_all()
         logger.info("RAG system initialized (TF-IDF)")
 
+    @contextmanager
     def _connect(self):
-        return sqlite3.connect(self.db_path, timeout=10.0)
+        conn = sqlite3.connect(self.db_path, timeout=10.0)
+        try:
+            yield conn
+            conn.commit()
+        finally:
+            conn.close()
 
     def _init_table(self):
         with self._lock, self._connect() as conn:

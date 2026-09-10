@@ -5,7 +5,7 @@ import re
 import time
 from collections import Counter, deque
 from dataclasses import asdict, dataclass
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List
 
 from providers import ProviderAdapter
 

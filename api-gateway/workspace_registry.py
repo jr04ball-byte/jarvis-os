@@ -4,10 +4,11 @@ No secrets live here. Paths/URLs are supplied by environment variables so the
 same build can run on the user's Windows machine, Docker, or another host.
 """
 from __future__ import annotations
+
+import ntpath
 import os
 from pathlib import Path
 from typing import Any
-import ntpath
 
 PROJECTS = {
     "email_agent": {

@@ -1,7 +1,8 @@
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'api-gateway'))
-from orchestrator import OrchestratorStore, build_plan, classify_goal
+from orchestrator import OrchestratorStore, build_plan
 from security import requires_confirmation, risk
 
 
