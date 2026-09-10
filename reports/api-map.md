@@ -29,6 +29,11 @@ Conventions: all handlers `async` unless noted; `/v1/*` is JSON, `/` hosts pages
 | GET | `/v1/gemini/status` | `gemini_status` |
 | GET | `/v1/models` | `list_models` |
 
+## Telemetry (V24 P5)
+| Method | Path | Handler |
+|---|---|---|
+| GET | `/v1/telemetry/summary` | `telemetry_summary` |
+
 ## Conversations / documents
 | Method | Path | Handler |
 |---|---|---|

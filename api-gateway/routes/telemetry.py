@@ -33,6 +33,7 @@ from services import (
     _pending_snapshot,
     build_tools_list,
 )
+from telemetry_collector import collector
 from workspace_registry import snapshot as workspace_snapshot
 
 import tools
@@ -152,6 +153,12 @@ async def command_center_overview(request: Request):
 @router.get("/v1/system/compute")
 async def system_compute():
     return await compute_snapshot()
+
+
+@router.get("/v1/telemetry/summary")
+async def telemetry_summary():
+    """Bus-derived outcome counters (V24 P5). Dashboard-safe: ids/kinds only."""
+    return collector.snapshot()
 
 
 @router.get("/v1/performance")
