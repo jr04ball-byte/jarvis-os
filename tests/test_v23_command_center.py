@@ -136,8 +136,9 @@ def test_command_center_overview_is_redacted(monkeypatch):
     from fastapi.testclient import TestClient
 
     main = importlib.import_module("main")
+    services = importlib.import_module("services")
     secret = "SERVER_SIDE_SECRET_SENTINEL"
-    monkeypatch.setattr(main, "GEMINI_API_KEY", secret)
+    monkeypatch.setattr(services, "GEMINI_API_KEY", secret)
 
     async def fake_brains():
         return {
@@ -169,8 +170,9 @@ def test_live_token_endpoint_returns_only_ephemeral_credential(monkeypatch):
     from fastapi.testclient import TestClient
 
     main = importlib.import_module("main")
+    chat = importlib.import_module("routes.chat")
     permanent = "PERMANENT_GEMINI_KEY_SENTINEL"
-    monkeypatch.setattr(main, "GEMINI_API_KEY", permanent)
+    monkeypatch.setattr(chat, "GEMINI_API_KEY", permanent)
 
     class FakeResponse:
         status_code = 200
