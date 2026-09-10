@@ -14,6 +14,7 @@ import re
 import secrets
 import threading
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -21,6 +22,8 @@ import google_oauth
 import httpx
 import local_tools
 from brains import providers as intelligence_providers
+from compute_manager import select_mode
+from compute_manager import snapshot as compute_snapshot
 from deps import (
     _COMPUTE_CACHE,
     _PROJECT_HEALTH_CACHE,
@@ -56,6 +59,8 @@ from schemas import (
     ChatRequest,
     ProjectWorkerAutofixRequest,
 )
+from security import allowed as tool_allowed
+from security import requires_confirmation
 from workspace_registry import get_target as workspace_target
 
 import tools
@@ -641,28 +646,28 @@ async def _agent_tool(name: str, args: dict, confirmed: bool=False):
 
 async def _agent_tool_impl(name: str, args: dict, confirmed: bool=False):
     if name == "google_accounts": return {"accounts": google_oauth.TokenStore().list_accounts()}
-    if name in {"file_search","file_content_search","read_file","write_file","open_file"}: return await execute_tool(ToolRequest(tool=name,arguments=args,confirmed=confirmed))
-    if name in {"gmail_search","gmail_read","gmail_send","calendar_list","calendar_create","calendar_update","calendar_delete"}: return await execute_tool(ToolRequest(tool=name,arguments=args,confirmed=confirmed))
-    if name in {"home_states","home_entities","home_device"}: return await execute_tool(ToolRequest(tool=name,arguments=args,confirmed=confirmed))
+    if name in {"file_search","file_content_search","read_file","write_file","open_file"}: return await execute_tool_core(name, args, confirmed)
+    if name in {"gmail_search","gmail_read","gmail_send","calendar_list","calendar_create","calendar_update","calendar_delete"}: return await execute_tool_core(name, args, confirmed)
+    if name in {"home_states","home_entities","home_device"}: return await execute_tool_core(name, args, confirmed)
     if name == "local_tools_inventory": return {"result":local_tools.scan_local_tools()}
     if name == "connections_inventory": return {"result":await _connection_snapshot()}
-    if name == "artifact_create": return await execute_tool(ToolRequest(tool="artifact_create",arguments=args,confirmed=confirmed))
-    if name == "research_search": return await execute_tool(ToolRequest(tool="research_search",arguments=args,confirmed=confirmed))
-    if name == "computer_status": return await execute_tool(ToolRequest(tool="computer_status",arguments=args,confirmed=confirmed))
-    if name == "computer_open": return await execute_tool(ToolRequest(tool="computer_open",arguments=args,confirmed=confirmed))
-    if name == "computer_type": return await execute_tool(ToolRequest(tool="computer_type",arguments=args,confirmed=confirmed))
-    if name == "computer_focus": return await execute_tool(ToolRequest(tool="computer_focus",arguments=args,confirmed=confirmed))
-    if name == "computer_verify": return await execute_tool(ToolRequest(tool="computer_verify",arguments=args,confirmed=confirmed))
-    if name == "computer_observe": return await execute_tool(ToolRequest(tool="computer_observe",arguments=args,confirmed=confirmed))
-    if name == "computer_key": return await execute_tool(ToolRequest(tool="computer_key",arguments=args,confirmed=confirmed))
-    if name == "computer_screenshot": return await execute_tool(ToolRequest(tool="computer_screenshot",arguments=args,confirmed=confirmed))
-    if name == "computer_capabilities": return await execute_tool(ToolRequest(tool="computer_capabilities",arguments=args,confirmed=confirmed))
-    if name == "computer_move": return await execute_tool(ToolRequest(tool="computer_move",arguments=args,confirmed=confirmed))
-    if name == "computer_click": return await execute_tool(ToolRequest(tool="computer_click",arguments=args,confirmed=confirmed))
-    if name == "computer_scroll": return await execute_tool(ToolRequest(tool="computer_scroll",arguments=args,confirmed=confirmed))
-    if name == "computer_windows": return await execute_tool(ToolRequest(tool="computer_windows",arguments=args,confirmed=confirmed))
-    if name == "computer_processes": return await execute_tool(ToolRequest(tool="computer_processes",arguments=args,confirmed=confirmed))
-    if name == "computer_shell": return await execute_tool(ToolRequest(tool="computer_shell",arguments=args,confirmed=confirmed))
+    if name == "artifact_create": return await execute_tool_core("artifact_create", args, confirmed)
+    if name == "research_search": return await execute_tool_core("research_search", args, confirmed)
+    if name == "computer_status": return await execute_tool_core("computer_status", args, confirmed)
+    if name == "computer_open": return await execute_tool_core("computer_open", args, confirmed)
+    if name == "computer_type": return await execute_tool_core("computer_type", args, confirmed)
+    if name == "computer_focus": return await execute_tool_core("computer_focus", args, confirmed)
+    if name == "computer_verify": return await execute_tool_core("computer_verify", args, confirmed)
+    if name == "computer_observe": return await execute_tool_core("computer_observe", args, confirmed)
+    if name == "computer_key": return await execute_tool_core("computer_key", args, confirmed)
+    if name == "computer_screenshot": return await execute_tool_core("computer_screenshot", args, confirmed)
+    if name == "computer_capabilities": return await execute_tool_core("computer_capabilities", args, confirmed)
+    if name == "computer_move": return await execute_tool_core("computer_move", args, confirmed)
+    if name == "computer_click": return await execute_tool_core("computer_click", args, confirmed)
+    if name == "computer_scroll": return await execute_tool_core("computer_scroll", args, confirmed)
+    if name == "computer_windows": return await execute_tool_core("computer_windows", args, confirmed)
+    if name == "computer_processes": return await execute_tool_core("computer_processes", args, confirmed)
+    if name == "computer_shell": return await execute_tool_core("computer_shell", args, confirmed)
     raise HTTPException(404,"unknown agent tool")
 
 
@@ -774,3 +779,137 @@ def select_voice_path(text: str, assistant_profile: str = "general") -> str:
     if _VOICE_TOOL_HINTS.search(text or ""):
         return "agent"
     return "stream"
+
+
+# ==================== Tool/artifact/research cores ====================
+# Pure business logic shared by the /v1/tools + /v1/artifacts + /v1/research
+# routes and the agent loop. Routes are thin wrappers (V24 P2).
+
+def build_tools_list() -> list:
+    catalog = [
+        ("file_search", "Search allowed Windows files by name"),
+        ("file_content_search", "Search text content in allowed files"),
+        ("read_file", "Read a text file from an allowed path"),
+        ("open_file", "Open a file on the Windows host"),
+        ("write_file", "Create or overwrite a text file"),
+        ("gmail_search", "Search Gmail"), ("gmail_read", "Read a Gmail message"),
+        ("gmail_send", "Send an email"),
+        ("calendar_list", "List upcoming calendar events"),
+        ("calendar_create", "Create a calendar event"), ("calendar_update", "Update a calendar event"),
+        ("calendar_delete", "Delete a calendar event"),
+        ("home_states", "Read Home Assistant device states"),
+        ("home_entities", "Discover controllable Home Assistant entities"),
+        ("home_device", "Control a supported Home Assistant device"),
+        ("local_tools_inventory", "Discover installed local tools and approved capabilities"),
+        ("connections_inventory", "Discover safe connection status for Jarvis services"),
+        ("artifact_create", "Create a persistent Jarvis workspace artifact"),
+        ("research_search", "Optional configured web research"),
+        ("computer_status", "Check whether opt-in Windows computer control is enabled"),
+        ("computer_capabilities", "Inspect Windows computer-control capabilities"),
+        ("computer_open", "Open an application or file through the Windows host bridge"),
+        ("computer_move", "Move the mouse cursor"), ("computer_click", "Click the Windows desktop"),
+        ("computer_type", "Type text into the focused Windows application"),
+        ("computer_focus", "Bring a Windows application window to the foreground"),
+        ("computer_verify", "Verify the foreground Windows window/process"),
+        ("computer_observe", "Capture screen plus foreground state"),
+        ("computer_key", "Press a keyboard key or shortcut"),
+        ("computer_scroll", "Scroll the active Windows application"),
+        ("computer_windows", "List visible Windows application windows"),
+        ("computer_processes", "List running Windows processes"),
+        ("computer_shell", "Run a bounded PowerShell command on the Windows host bridge"),
+        ("computer_screenshot", "Capture the current Windows screen"),
+    ]
+    return [
+        {"name": name, "description": description, "confirmation": requires_confirmation(name)}
+        for name, description in catalog if tool_allowed(name)
+    ]
+
+
+def create_artifact(title: str, kind: str, content: str, metadata: dict | None) -> dict:
+    artifact_id = secrets.token_hex(16)
+    item = {"id": artifact_id, "title": title, "kind": kind, "content": content,
+            "metadata": metadata, "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat()}
+    _artifact_path(artifact_id).write_text(json.dumps(item, ensure_ascii=False, indent=2), encoding="utf-8")
+    return item
+
+
+async def web_search(query: str, num_results: int = 5) -> dict:
+    if not EXA_API_KEY:
+        return {"configured": False, "message": "EXA_API_KEY is not configured. The AI System remains fully local; web research is an optional add-on."}
+    headers = {"x-api-key": EXA_API_KEY, "Content-Type": "application/json"}
+    payload = {"query": query, "numResults": num_results, "contents": {"highlights": {"maxCharacters": 1200}}}
+    async with httpx.AsyncClient(timeout=25) as client:
+        r = await client.post("https://api.exa.ai/search", headers=headers, json=payload)
+        if r.status_code >= 400:
+            raise HTTPException(r.status_code, r.text)
+        data = r.json()
+    return {"configured": True, "query": query, "results": data.get("results", [])}
+
+
+async def execute_tool_core(tool: str, arguments: dict | None, confirmed: bool = False) -> dict:
+    """Full tool-execution dispatch shared by the /v1/tools/execute route and
+    the agent loop. Raises HTTPException on auth/validation/transport errors;
+    returns a confirmation payload when approval is required first."""
+    if not tool_allowed(tool):
+        raise HTTPException(404, "unknown or disallowed tool")
+    if requires_confirmation(tool) and not confirmed:
+        return _create_confirmation(tool, arguments, "This action changes data, sends a message, or controls a device. Explicit confirmation is required.")
+    a = arguments
+    store = google_oauth.TokenStore()
+    # Never let the model select an unconnected Google identity.
+    if tool.startswith("gmail_") or tool.startswith("calendar_"):
+        email = str(a.get("email", "")).strip().lower()
+        accounts = {x.lower() for x in store.list_accounts()}
+        if not email:
+            raise HTTPException(400, "email account is required; call google_accounts first")
+        if email not in accounts:
+            raise HTTPException(403, "Google account is not connected to this AI System")
+        a["email"] = email
+    try:
+        if tool == "file_search": return {"result": tools.file_search(a.get("query", ""), a.get("root", ""), a.get("limit", 30))}
+        if tool == "file_content_search": return {"result": tools.file_content_search(a.get("query", ""), a.get("root", ""), a.get("limit", 20))}
+        if tool == "read_file": return {"result": tools.read_file(a["path"])}
+        if tool == "open_file": return {"result": await tools.host_open_file(a["path"])}
+        if tool == "write_file": return {"result": tools.write_text_file(a["path"], a.get("content", ""), a.get("overwrite", False))}
+        if tool == "gmail_search": return {"result": await google_oauth.gmail_list_messages(email, store, a.get("max_results", 20), a.get("query", ""))}
+        if tool == "gmail_read": return {"result": await google_oauth.gmail_get_message(email, store, a["message_id"])}
+        if tool == "gmail_send": return {"result": await google_oauth.gmail_send_message(email, store, a["to"], a["subject"], a["body"])}
+        if tool == "calendar_list": return {"result": await google_oauth.calendar_list_events(email, store, a.get("max_results", 20), a.get("time_min"))}
+        if tool == "calendar_create": return {"result": await google_oauth.calendar_create_event(email, store, a["event"])}
+        if tool == "calendar_update": return {"result": await google_oauth.calendar_update_event(email, store, a["event_id"], a["event"])}
+        if tool == "calendar_delete": return {"result": await google_oauth.calendar_delete_event(email, store, a["event_id"])}
+        if tool == "home_states": return {"result": await tools.ha_states()}
+        if tool == "home_entities": return {"result": await tools.ha_entities(a.get("domains"))}
+        if tool == "home_device":
+            args = dict(a); entity = args.pop("entity_id"); action = args.pop("action"); return {"result": await tools.ha_device(entity, action, **args)}
+        if tool == "artifact_create":
+            return {"result": create_artifact(a.get("title", "Untitled"), a.get("kind", "markdown"), a.get("content", ""), a.get("metadata") or {})}
+        if tool == "research_search":
+            return {"result": await web_search(a.get("query", ""), a.get("num_results", 5))}
+        if tool.startswith("computer_"):
+            if tool == "computer_status": return {"result": await tools.computer_status()}
+            if tool == "computer_capabilities": return {"result": await tools.computer_capabilities()}
+            if tool == "computer_open": return {"result": await tools.computer_open(a.get("target", ""))}
+            if tool == "computer_move": return {"result": await tools.computer_move(a.get("x", 0), a.get("y", 0), a.get("duration", 0.15))}
+            if tool == "computer_click": return {"result": await tools.computer_click(a.get("x", 0), a.get("y", 0), a.get("clicks", 1), a.get("button", "left"))}
+            if tool == "computer_type": return {"result": await tools.computer_type(a.get("text", ""), a.get("title", ""), a.get("process", ""), a.get("pid", 0))}
+            if tool == "computer_focus": return {"result": await tools.computer_focus(a.get("title", ""), a.get("process", ""), a.get("pid", 0))}
+            if tool == "computer_verify": return {"result": await tools.computer_verify(a.get("title", ""), a.get("process", ""), a.get("pid", 0))}
+            if tool == "computer_observe": return {"result": await tools.computer_observe(a.get("max_width", 0), a.get("include_windows", True), a.get("include_processes", False))}
+            if tool == "computer_key": return {"result": await tools.computer_key(a.get("key", ""))}
+            if tool == "computer_scroll": return {"result": await tools.computer_scroll(a.get("amount", 0))}
+            if tool == "computer_windows": return {"result": await tools.computer_windows()}
+            if tool == "computer_processes": return {"result": await tools.computer_processes()}
+            if tool == "computer_shell": return {"result": await tools.computer_shell(a.get("command", ""), a.get("timeout", 30))}
+            if tool == "computer_screenshot": return {"result": await tools.computer_screenshot()}
+        if tool == "local_tools_inventory": return {"result": local_tools.scan_local_tools()}
+        if tool == "connections_inventory": return {"result": await _connection_snapshot()}
+        raise HTTPException(404, "unknown tool")
+    except KeyError as e: raise HTTPException(400, f"missing argument: {e.args[0]}")
+    except PermissionError as e: raise HTTPException(401, str(e))
+    except FileNotFoundError as e: raise HTTPException(404, str(e))
+    except httpx.HTTPStatusError as e: raise HTTPException(e.response.status_code, e.response.text)
+    except Exception as e:
+        logger.exception("tool execution failed")
+        raise HTTPException(500, str(e))

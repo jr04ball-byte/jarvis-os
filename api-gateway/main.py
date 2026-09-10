@@ -6,7 +6,6 @@ import json
 import logging
 import os
 import re
-import secrets
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -21,7 +20,6 @@ from deps import (
     DEEPGRAM_API_KEY,
     DEEPGRAM_STT_MODEL,
     DEEPGRAM_TTS_MODEL,
-    EXA_API_KEY,
     GEMINI_API_KEY,
     GEMINI_AUTH_TOKEN_URL,
     GEMINI_LIVE_MODEL,
@@ -100,7 +98,6 @@ from services import (
     _configuration_snapshot,
     _connection_snapshot,
     _consume_confirmation,
-    _create_confirmation,
     _load_connection_overrides,
     _pending_snapshot,
     _project_worker_target,
@@ -109,10 +106,14 @@ from services import (
     _save_connection_overrides,
     _update_confirmation_resume,
     apply_system_prompt,
+    build_tools_list,
+    create_artifact,
+    execute_tool_core,
     select_agent_model,
     select_model,
     select_voice_path,
     stream_chat,
+    web_search,
 )
 
 # Re-exported for backward compatibility (V24 P1: implementations live in store.py).
@@ -140,9 +141,7 @@ from project_worker import make_worker_prompt
 from project_worker import project_health as project_worker_health_snapshot
 from project_worker import verify_workspace as project_verify_workspace
 from providers import ProviderMessage
-from security import allowed as tool_allowed
 from security import policy_snapshot as security_policy_snapshot
-from security import requires_confirmation
 from workspace_registry import get_target as workspace_target
 from workspace_registry import is_registered_workspace, target_for_workspace
 from workspace_registry import snapshot as workspace_snapshot
@@ -511,10 +510,7 @@ async def artifacts_list(limit: int = 30):
 
 @app.post("/v1/artifacts")
 async def artifact_create(body: ArtifactRequest):
-    artifact_id=secrets.token_hex(16)
-    item={"id":artifact_id,"title":body.title,"kind":body.kind,"content":body.content,"metadata":body.metadata,"created_at":datetime.now(timezone.utc).isoformat(),"updated_at":datetime.now(timezone.utc).isoformat()}
-    _artifact_path(artifact_id).write_text(json.dumps(item,ensure_ascii=False,indent=2),encoding="utf-8")
-    return item
+    return create_artifact(body.title, body.kind, body.content, body.metadata)
 
 @app.get("/v1/artifacts/{artifact_id}")
 async def artifact_get(artifact_id: str): return _artifact_read(artifact_id)
@@ -536,15 +532,7 @@ async def artifact_delete(artifact_id: str):
 
 @app.post("/v1/research/search")
 async def research_search(body: ResearchRequest):
-    if not EXA_API_KEY:
-        return {"configured":False,"message":"EXA_API_KEY is not configured. The AI System remains fully local; web research is an optional add-on."}
-    headers={"x-api-key":EXA_API_KEY,"Content-Type":"application/json"}
-    payload={"query":body.query,"numResults":body.num_results,"contents":{"highlights":{"maxCharacters":1200}}}
-    async with httpx.AsyncClient(timeout=25) as client:
-        r=await client.post("https://api.exa.ai/search",headers=headers,json=payload)
-        if r.status_code >= 400: raise HTTPException(r.status_code,r.text)
-        data=r.json()
-    return {"configured":True,"query":body.query,"results":data.get("results",[]) }
+    return await web_search(body.query, body.num_results)
 
 # ==================== Endpoints ====================
 
@@ -663,7 +651,7 @@ async def system_status():
     except Exception:
         out["ollama"]["status"] = "unreachable"
     try:
-        out["tools_count"] = len((await list_tools()).get("tools", []))
+        out["tools_count"] = len(build_tools_list())
     except Exception as exc:
         logger.debug("tools_count probe failed: %s", exc)
     if tools.HA_URL and tools.HA_TOKEN:
@@ -898,110 +886,11 @@ async def local_tools_inventory():
 
 @app.get("/v1/tools")
 async def list_tools():
-    catalog = [
-        ("file_search", "Search allowed Windows files by name"),
-        ("file_content_search", "Search text content in allowed files"),
-        ("read_file", "Read a text file from an allowed path"),
-        ("open_file", "Open a file on the Windows host"),
-        ("write_file", "Create or overwrite a text file"),
-        ("gmail_search", "Search Gmail"), ("gmail_read", "Read a Gmail message"),
-        ("gmail_send", "Send an email"),
-        ("calendar_list", "List upcoming calendar events"),
-        ("calendar_create", "Create a calendar event"), ("calendar_update", "Update a calendar event"),
-        ("calendar_delete", "Delete a calendar event"),
-        ("home_states", "Read Home Assistant device states"),
-        ("home_entities", "Discover controllable Home Assistant entities"),
-        ("home_device", "Control a supported Home Assistant device"),
-        ("local_tools_inventory", "Discover installed local tools and approved capabilities"),
-        ("connections_inventory", "Discover safe connection status for Jarvis services"),
-        ("artifact_create", "Create a persistent Jarvis workspace artifact"),
-        ("research_search", "Optional configured web research"),
-        ("computer_status", "Check whether opt-in Windows computer control is enabled"),
-        ("computer_capabilities", "Inspect Windows computer-control capabilities"),
-        ("computer_open", "Open an application or file through the Windows host bridge"),
-        ("computer_move", "Move the mouse cursor"), ("computer_click", "Click the Windows desktop"),
-        ("computer_type", "Type text into the focused Windows application"),
-        ("computer_focus", "Bring a Windows application window to the foreground"),
-        ("computer_verify", "Verify the foreground Windows window/process"),
-        ("computer_observe", "Capture screen plus foreground state"),
-        ("computer_key", "Press a keyboard key or shortcut"),
-        ("computer_scroll", "Scroll the active Windows application"),
-        ("computer_windows", "List visible Windows application windows"),
-        ("computer_processes", "List running Windows processes"),
-        ("computer_shell", "Run a bounded PowerShell command on the Windows host bridge"),
-        ("computer_screenshot", "Capture the current Windows screen"),
-    ]
-    return {"tools": [
-        {"name": name, "description": description, "confirmation": requires_confirmation(name)}
-        for name, description in catalog if tool_allowed(name)
-    ]}
+    return {"tools": build_tools_list()}
 
 @app.post("/v1/tools/execute")
 async def execute_tool(req: ToolRequest):
-    if not tool_allowed(req.tool):
-        raise HTTPException(404, "unknown or disallowed tool")
-    if requires_confirmation(req.tool) and not req.confirmed:
-        return _create_confirmation(req.tool, req.arguments, "This action changes data, sends a message, or controls a device. Explicit confirmation is required.")
-    a=req.arguments
-    store=google_oauth.TokenStore()
-    # Never let the model select an unconnected Google identity.
-    if req.tool.startswith("gmail_") or req.tool.startswith("calendar_"):
-        email = str(a.get("email", "")).strip().lower()
-        accounts = {x.lower() for x in store.list_accounts()}
-        if not email:
-            raise HTTPException(400, "email account is required; call google_accounts first")
-        if email not in accounts:
-            raise HTTPException(403, "Google account is not connected to this AI System")
-        a["email"] = email
-    try:
-        if req.tool=="file_search": return {"result":tools.file_search(a.get("query",""),a.get("root",""),a.get("limit",30))}
-        if req.tool=="file_content_search": return {"result":tools.file_content_search(a.get("query",""),a.get("root",""),a.get("limit",20))}
-        if req.tool=="read_file": return {"result":tools.read_file(a["path"])}
-        if req.tool=="open_file": return {"result":await tools.host_open_file(a["path"])}
-        if req.tool=="write_file": return {"result":tools.write_text_file(a["path"],a.get("content",""),a.get("overwrite",False))}
-        if req.tool=="gmail_search": return {"result":await google_oauth.gmail_list_messages(email,store,a.get("max_results",20),a.get("query",""))}
-        if req.tool=="gmail_read": return {"result":await google_oauth.gmail_get_message(email,store,a["message_id"])}
-        if req.tool=="gmail_send": return {"result":await google_oauth.gmail_send_message(email,store,a["to"],a["subject"],a["body"])}
-        if req.tool=="calendar_list": return {"result":await google_oauth.calendar_list_events(email,store,a.get("max_results",20),a.get("time_min"))}
-        if req.tool=="calendar_create": return {"result":await google_oauth.calendar_create_event(email,store,a["event"])}
-        if req.tool=="calendar_update": return {"result":await google_oauth.calendar_update_event(email,store,a["event_id"],a["event"])}
-        if req.tool=="calendar_delete": return {"result":await google_oauth.calendar_delete_event(email,store,a["event_id"])}
-        if req.tool=="home_states": return {"result":await tools.ha_states()}
-        if req.tool=="home_entities": return {"result":await tools.ha_entities(a.get("domains"))}
-        if req.tool=="home_device":
-            args=dict(a); entity=args.pop("entity_id"); action=args.pop("action"); return {"result":await tools.ha_device(entity,action,**args)}
-        if req.tool=="artifact_create":
-            body=ArtifactRequest(title=a.get("title","Untitled"),kind=a.get("kind","markdown"),content=a.get("content",""),metadata=a.get("metadata") or {})
-            return {"result":await artifact_create(body)}
-        if req.tool=="research_search":
-            body=ResearchRequest(query=a.get("query",""),num_results=a.get("num_results",5))
-            return {"result":await research_search(body)}
-        if req.tool.startswith("computer_"):
-            if req.tool=="computer_status": return {"result":await tools.computer_status()}
-            if req.tool=="computer_capabilities": return {"result":await tools.computer_capabilities()}
-            if req.tool=="computer_open": return {"result":await tools.computer_open(a.get("target",""))}
-            if req.tool=="computer_move": return {"result":await tools.computer_move(a.get("x",0),a.get("y",0),a.get("duration",0.15))}
-            if req.tool=="computer_click": return {"result":await tools.computer_click(a.get("x",0),a.get("y",0),a.get("clicks",1),a.get("button","left"))}
-            if req.tool=="computer_type": return {"result":await tools.computer_type(a.get("text",""),a.get("title",""),a.get("process",""),a.get("pid",0))}
-            if req.tool=="computer_focus": return {"result":await tools.computer_focus(a.get("title",""),a.get("process",""),a.get("pid",0))}
-            if req.tool=="computer_verify": return {"result":await tools.computer_verify(a.get("title",""),a.get("process",""),a.get("pid",0))}
-            if req.tool=="computer_observe": return {"result":await tools.computer_observe(a.get("max_width",0),a.get("include_windows",True),a.get("include_processes",False))}
-            if req.tool=="computer_key": return {"result":await tools.computer_key(a.get("key",""))}
-            if req.tool=="computer_scroll": return {"result":await tools.computer_scroll(a.get("amount",0))}
-            if req.tool=="computer_windows": return {"result":await tools.computer_windows()}
-            if req.tool=="computer_processes": return {"result":await tools.computer_processes()}
-            if req.tool=="computer_shell": return {"result":await tools.computer_shell(a.get("command",""),a.get("timeout",30))}
-            if req.tool=="computer_screenshot": return {"result":await tools.computer_screenshot()}
-        if req.tool=="local_tools_inventory": return {"result":local_tools.scan_local_tools()}
-        if req.tool=="connections_inventory": return {"result":await _connection_snapshot()}
-        raise HTTPException(404,"unknown tool")
-    except KeyError as e: raise HTTPException(400,f"missing argument: {e.args[0]}")
-    except PermissionError as e: raise HTTPException(401,str(e))
-    except FileNotFoundError as e: raise HTTPException(404,str(e))
-    except httpx.HTTPStatusError as e: raise HTTPException(e.response.status_code,e.response.text)
-    except Exception as e:
-        logger.exception("tool execution failed")
-        raise HTTPException(500,str(e))
+    return await execute_tool_core(req.tool, req.arguments, req.confirmed)
 
 @app.get("/v1/models")
 async def list_models():
