@@ -5,10 +5,13 @@ mode is exposed as an explicit option for future larger models.
 """
 from __future__ import annotations
 
+import logging
 import os
 import subprocess
 import time
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3.5:9b")
@@ -34,8 +37,8 @@ def gpu_stats() -> dict[str, Any]:
             base.update({"available": True, "name": parts[0], "memory_used_mb": used,
                          "memory_total_mb": total, "memory_free_mb": max(0, total-used),
                          "utilization_gpu": int(parts[3]), "temperature_c": int(parts[4])})
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("nvidia-smi GPU probe failed: %s", exc)
     return base
 
 

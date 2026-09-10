@@ -28,6 +28,13 @@ def test_discovers_package_scripts(tmp_path):
     assert ['npm', 'run', 'lint'] in commands['lint']
 
 
+def test_pnpm_lint_uses_lint_script_not_stale_loop_var(tmp_path):
+    (tmp_path / 'package.json').write_text(json.dumps({'scripts': {'lint': 'eslint .'}}))
+    (tmp_path / 'pnpm-lock.yaml').write_text('lockfileVersion: 9\n')
+    commands = discover_commands(tmp_path)
+    assert commands['lint'] == [['pnpm', 'lint']]
+
+
 def test_inspection_does_not_read_env(tmp_path):
     (tmp_path / '.env').write_text('TOP_SECRET=abc')
     (tmp_path / 'README.md').write_text('hello')
