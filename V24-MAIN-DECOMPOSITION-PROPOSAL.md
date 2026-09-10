@@ -98,6 +98,17 @@ Reply with one of:
 - **DEFER** — proposal stays on `main` as the recorded plan; cycles continue elsewhere
   (next: per-site PLW1510 subprocess review)
 
+## 7. Approval record (V24 Principal Engineering Directive — APPROVE WITH CHANGES)
+
+- Execution **approved**; the directive's 9-router list
+  (`chat, providers, workers, projects, auth, dashboard, voice, telemetry, health`)
+  **supersedes** the 12-module sketch in §2, and `main.py` target is **< 400 lines**.
+- Added scope beyond this proposal: DI container (`AppContainer`), event bus,
+  telemetry platform, coverage > 90%. These land as later phases after the
+  route split; singletons move in P1 (not P0 — avoids a `main`↔`deps` cycle).
+- V24 P0 (schemas extraction) executed as `v24/p0-schemas`; singleton/DI work
+  follows with the store move.
+
 ## Appendix — evidence (Cycle 6 AST audit, abbreviated)
 
 - Classes: `ConversationDB` 375–481, `DocumentRAG` 485–574,
