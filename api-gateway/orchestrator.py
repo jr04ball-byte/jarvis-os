@@ -16,6 +16,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from events import TaskCompleted, TaskQueued
+from events import bus as event_bus
 from workspace_registry import context_for
 
 DEEP_RE = re.compile(r"\b(code|coding|debug|build|implement|refactor|architect|architecture|research|analy[sz]e|security|database|sql|python|javascript|typescript|docker|deploy|test|fix)\b", re.IGNORECASE)
@@ -130,7 +132,8 @@ class OrchestratorStore:
         plan = build_plan(goal)
         pid = uuid.uuid4().hex
         now = utc_now()
-        with self._lock, self._connect() as c:
+        queued: list[tuple[str, str]] = []
+        with self._lock, self._db() as c:
             c.execute("INSERT INTO jarvis_projects VALUES(?,?,?,?,?,?)", (pid, goal.strip(), json.dumps(plan), "active", now, now))
             prev = None
             for i, task in enumerate(plan["tasks"]):
@@ -139,8 +142,12 @@ class OrchestratorStore:
                 c.execute("INSERT INTO jarvis_tasks(id,project_id,position,title,kind,risk,brain,capability,status,depends_on,result_json,error,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                           (tid, pid, i, task["title"], task["kind"], task["risk"], task["brain"], task.get("capability", "generic"),
                            "ready" if not deps else "pending", json.dumps(deps), None, None, now, now))
+                if not deps:
+                    queued.append((tid, task["kind"]))
                 prev = tid
             self._audit(c, pid, None, "project_created", {"goal": goal, "task_count": len(plan["tasks"])})
+        for tid, kind in queued:
+            event_bus.emit(TaskQueued(project_id=pid, task_id=tid, kind=kind))
         return self.get_project(pid)
 
     def _task_dict(self, row):
@@ -173,10 +180,14 @@ class OrchestratorStore:
     def transition(self, task_id: str, status: str, result: Any = None, error: str | None = None) -> dict[str, Any]:
         if status not in STATUS: raise ValueError(f"invalid status: {status}")
         now = utc_now()
-        with self._lock, self._connect() as c:
+        pid: str | None = None
+        kind: str | None = None
+        readied: tuple[str, str] | None = None
+        with self._lock, self._db() as c:
             row = c.execute("SELECT * FROM jarvis_tasks WHERE id=?", (task_id,)).fetchone()
             if not row: raise KeyError(task_id)
             if row["status"] in TERMINAL and status != row["status"]: raise ValueError("terminal task cannot transition")
+            pid, kind = row["project_id"], row["kind"]
             c.execute("UPDATE jarvis_tasks SET status=?, result_json=?, error=?, updated_at=? WHERE id=?",
                       (status, json.dumps(result, default=str) if result is not None else None, error, now, task_id))
             c.execute("UPDATE jarvis_projects SET updated_at=? WHERE id=?", (now, row["project_id"]))
@@ -185,9 +196,14 @@ class OrchestratorStore:
                 nxt = c.execute("SELECT * FROM jarvis_tasks WHERE project_id=? AND position>? ORDER BY position LIMIT 1", (row["project_id"], row["position"])).fetchone()
                 if nxt and nxt["status"] == "pending":
                     c.execute("UPDATE jarvis_tasks SET status='ready', updated_at=? WHERE id=?", (now, nxt["id"]))
+                    readied = (nxt["id"], nxt["kind"])
             statuses = [x[0] for x in c.execute("SELECT status FROM jarvis_tasks WHERE project_id=?", (row["project_id"],)).fetchall()]
             if statuses and all(s == "completed" for s in statuses):
                 c.execute("UPDATE jarvis_projects SET status='completed', updated_at=? WHERE id=?", (now, row["project_id"]))
+        if status == "completed" and pid is not None and kind is not None:
+            event_bus.emit(TaskCompleted(project_id=pid, task_id=task_id, kind=kind))
+        if readied is not None and pid is not None:
+            event_bus.emit(TaskQueued(project_id=pid, task_id=readied[0], kind=readied[1]))
         return self.get_project(row["project_id"])
 
     def list_projects(self, limit: int = 20) -> list[dict[str, Any]]:

@@ -7,6 +7,8 @@ import time
 from collections.abc import AsyncGenerator
 from typing import Any
 
+from events import ProviderFailed, ProviderSelected
+from events import bus as event_bus
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from intelligence_router import IntelligenceRouter
@@ -105,6 +107,7 @@ async def complete(req: BrainRequest) -> dict[str, Any]:
 
         started = time.time()
         try:
+            await event_bus.emit_async(ProviderSelected(provider=name, model=provider.model, reason=decision.reason))
             result = await provider.complete(
                 messages,
                 temperature=req.temperature or 0.7,
@@ -136,6 +139,7 @@ async def complete(req: BrainRequest) -> dict[str, Any]:
             last_error = str(exc)
             router_engine.record_provider_result(name, ok=False, elapsed_ms=elapsed, route_reason=decision.reason)
             attempts.append({"provider": name, "ok": False, "error": last_error, "elapsed_ms": elapsed})
+            await event_bus.emit_async(ProviderFailed(provider=name, error=last_error, elapsed_ms=elapsed))
             logger.warning("provider %s failed: %s", name, exc)
 
     raise HTTPException(502, detail={"message": "all eligible brains failed", "attempts": attempts, "last_error": last_error})
@@ -159,6 +163,7 @@ async def stream(req: BrainRequest) -> AsyncGenerator[str, None]:
         started = time.time()
         yielded = False
         try:
+            await event_bus.emit_async(ProviderSelected(provider=name, model=provider.model, reason=decision.reason))
             yield f"event: route\ndata: {json.dumps(decision.as_dict())}\n\n"
             yield f"event: brain\ndata: {json.dumps({'brain': name, 'model': provider.model})}\n\n"
             async for chunk in provider.stream(
@@ -180,6 +185,7 @@ async def stream(req: BrainRequest) -> AsyncGenerator[str, None]:
         except Exception as exc:
             elapsed = int((time.time() - started) * 1000)
             router_engine.record_provider_result(name, ok=False, elapsed_ms=elapsed, route_reason=decision.reason)
+            await event_bus.emit_async(ProviderFailed(provider=name, error=str(exc), elapsed_ms=elapsed))
             logger.warning("brain stream %s failed: %s", name, exc)
             # Once a provider has emitted user-visible tokens, switching models
             # mid-answer can create contradictory output. Fail closed instead.
