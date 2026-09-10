@@ -84,20 +84,6 @@ app.include_router(dashboard.router)
 app.include_router(health.router)
 
 
-# Recent-message window for conversation history. Keeps long chats inside a
-# useful context budget; the next iteration should add token budgeting and/or
-# automatic summarization (see architecture notes).
-
-# In-memory confirmation tickets. Tickets are single-use and expire quickly.
-# This prevents the client from changing the arguments between proposal and approval.
-
-
-# ==================== Smart Model Routing ====================
-
-
-# ==================== Core AI Behavior ====================
-
-
 # ==================== Request Logging Middleware ====================
 
 @app.middleware("http")
@@ -120,71 +106,6 @@ async def log_requests(request: Request, call_next):
     })
     logger.info(f"{request.method} {request.url.path} - {response.status_code} - {duration:.2f}s")
     return response
-
-# ==================== Connection Registry ====================
-
-
-# ==================== Google Gemini Cloud ====================
-
-
-# ==================== Gemini Live Browser Token ====================
-
-# Browser clients MUST use Gemini Live's constrained endpoint with a short-lived
-# auth token.  Never hand a permanent Gemini API key to JavaScript.
-
-
-# ==================== OpenCode Go Sub-Agent Relay ====================
-
-
-# ==================== Deepgram Voice ====================
-
-
-# ==================== V13 Artifacts / Research ====================
-
-
-# ==================== Endpoints ====================
-
-
-# ==================== Google OAuth (Gmail + Calendar) ====================
-# Reuses GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET from email-agent-saas .env
-# On first run: visit http://localhost:8000/auth/google/start
-# Tokens are encrypted at rest in api_data volume.
-
-
-# ==================== Local Tool / Device Layer ====================
-
-
-# ==================== Adaptive Compute ====================
-
-
-# ==================== Jarvis Orchestrator ====================
-
-
-# legacy implementation body removed by V22.2 refactor marker
-
-
-# ==================== Streaming Chat ====================
-
-
-# ==================== Sales Machine ====================
-
-
-# ==================== RAG Chat ====================
-
-
-# ==================== RAG Document Management ====================
-
-
-# ==================== Model Comparison ====================
-
-
-# ==================== Performance Stats ====================
-
-
-# ==================== Agentic Tool Calling ====================
-
-
-# ==================== Adaptive Voice Turn ====================
 
 
 if __name__ == "__main__":

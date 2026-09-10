@@ -106,6 +106,17 @@ def test_gemini_live_never_returns_permanent_api_key_in_source():
     assert "/v1/project-worker/autofix" in voice
 
 
+def test_app_assembly_has_security_and_logging_middleware():
+    """V24 P2: the auth gate must never be silently dropped during refactors."""
+    import importlib
+
+    main = importlib.import_module("main")
+    assert callable(main.api_auth)
+    assert callable(main.log_requests)
+    middlewares = [m.cls.__name__ for m in main.app.user_middleware]
+    assert middlewares.count("CORSMiddleware") == 1
+
+
 def test_fastapi_v23_smoke_and_dashboard_assets(monkeypatch):
     import importlib
 
