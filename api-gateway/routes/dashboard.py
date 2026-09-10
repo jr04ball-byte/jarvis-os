@@ -1,5 +1,4 @@
 """V24 P2: dashboard routes (moved verbatim from main.py)."""
-from __future__ import annotations
 
 import logging
 import os

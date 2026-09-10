@@ -50,15 +50,15 @@ def test_system_prompt_does_not_change_voice_path():
 
 def test_voice_turn_endpoint_wiring():
     gateway = Path(__file__).resolve().parents[1] / 'api-gateway'
-    src = (gateway / 'main.py').read_text(encoding='utf-8')
-    assert '@app.post("/v1/voice/turn")' in src
-    # V24 P0: request models live in schemas.py; main.py must import the one it wires.
+    src = (gateway / 'routes' / 'voice.py').read_text(encoding='utf-8')
+    assert '@router.post("/v1/voice/turn")' in src
+    # V24 P0: request models live in schemas.py; the voice router must import the one it wires.
     assert 'class VoiceTurnRequest' in (gateway / 'schemas.py').read_text(encoding='utf-8')
     assert 'VoiceTurnRequest' in src
     assert 'StreamingResponse(' in src
     assert 'X-Voice-Model' in src
     assert 'stream_chat(stream_request)' in src
-    assert '@app.get("/voice-engine.js"' in src
+    assert '@router.get("/voice-engine.js"' in src
 
 
 def test_dashboard_uses_engine_and_streaming_turn():
@@ -82,5 +82,5 @@ def test_voice_console_uses_engine_and_turn():
     assert 'getReader()' in page
     assert 'text/event-stream' in page
     assert '/v1/voice/turn' in page
-    assert 'X-Voice-Model' in (Path(__file__).resolve().parents[1] / 'api-gateway' / 'main.py').read_text(encoding='utf-8')
+    assert 'X-Voice-Model' in (Path(__file__).resolve().parents[1] / 'api-gateway' / 'routes' / 'voice.py').read_text(encoding='utf-8')
     assert 'speechFrames' in (Path(__file__).resolve().parents[1] / 'api-gateway' / 'voice-engine.js').read_text(encoding='utf-8')

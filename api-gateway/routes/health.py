@@ -1,5 +1,4 @@
 """V24 P2: health routes (moved verbatim from main.py)."""
-from __future__ import annotations
 
 import time
 
