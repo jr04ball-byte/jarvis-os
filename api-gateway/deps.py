@@ -23,6 +23,9 @@ from store import ConversationDB, DocumentRAG, PerformanceMonitor
 logger = logging.getLogger(__name__)
 
 
+APP_VERSION = "23.0.0"
+
+
 def data_dir() -> Path:
     return Path(os.getenv("API_DATA_DIR", str(Path(__file__).resolve().parent / "data")))
 

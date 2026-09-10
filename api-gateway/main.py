@@ -16,6 +16,7 @@ from compute_manager import snapshot as compute_snapshot
 from deps import (
     AI_API_TOKEN,
     AI_REQUIRE_AUTH,
+    APP_VERSION,
     ARTIFACTS_DIR,
     DEEPGRAM_API_KEY,
     DEEPGRAM_STT_MODEL,
@@ -155,7 +156,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="AI System — Jarvis Experience", version="23.0.0")
+app = FastAPI(title="AI System — Jarvis Experience", version=APP_VERSION)
 
 # Rate limiting
 app.state.limiter = limiter
@@ -631,7 +632,7 @@ async def blender_dashboard_asset(request: Request):
 async def system_status():
     """Return safe, dashboard-friendly service health without exposing secrets."""
     out = {
-        "api": {"status": "online", "version": app.version},
+        "api": {"status": "online", "version": APP_VERSION},
         "ollama": {"status": "unknown", "model": None},
         "home_assistant": {"status": "not_configured"},
         "host_bridge": {"status": "not_configured"},
@@ -697,7 +698,7 @@ async def voice_engine_js():
 async def health_check():
     """Fast liveness probe: no external network calls."""
     return {
-        "status": "healthy", "version": app.version,
+        "status": "healthy", "version": APP_VERSION,
         "uptime_seconds": int(max(0, time.time() - JARVIS_STARTED_AT)),
     }
 
@@ -709,7 +710,7 @@ async def readiness_check():
     online = [name for name, info in (brains.get("providers") or {}).items() if info.get("online")]
     config = _configuration_snapshot()
     ready = bool(online) and bool(config.get("data_directory_writable"))
-    payload = {"ready": ready, "version": app.version, "online_providers": online, "configuration": config}
+    payload = {"ready": ready, "version": APP_VERSION, "online_providers": online, "configuration": config}
     if not ready:
         return JSONResponse(status_code=503, content=payload)
     return payload
@@ -763,7 +764,7 @@ async def command_center_overview(request: Request):
     success_rate = round(((total_calls - total_failures) / total_calls) * 100, 1) if total_calls else 100.0
 
     return {
-        "version": app.version, "generated_at": datetime.now(timezone.utc).isoformat(),
+        "version": APP_VERSION, "generated_at": datetime.now(timezone.utc).isoformat(),
         "uptime_seconds": int(max(0, time.time() - JARVIS_STARTED_AT)),
         "configuration": _configuration_snapshot(),
         "brains": brains, "compute": compute, "projects": projects, "worker_runs": worker_runs,
