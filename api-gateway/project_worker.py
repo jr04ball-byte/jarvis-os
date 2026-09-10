@@ -17,6 +17,9 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+from events import WorkerCompleted, WorkerStarted
+from events import bus as event_bus
+
 logger = logging.getLogger(__name__)
 
 SENSITIVE_NAMES = {'.env', '.env.local', '.env.production', '.env.development', 'id_rsa', 'id_ed25519'}
@@ -559,6 +562,7 @@ class WorkerRunStore:
         with self._connect() as conn:
             conn.execute('INSERT INTO worker_runs VALUES (?,?,?,?,?,?,?,?,?)',
                          (run_id, target, workspace, goal, 'running', '[]', json.dumps(baseline), now, now))
+        event_bus.emit(WorkerStarted(run_id=run_id, target=target, workspace=workspace))
         return self.get(run_id)
 
     def get(self, run_id: str) -> dict[str, Any]:
@@ -602,4 +606,6 @@ class WorkerRunStore:
         with self._connect() as conn:
             conn.execute('UPDATE worker_runs SET status=?, attempts_json=?, updated_at=? WHERE id=?',
                          (new_status, json.dumps(attempts, default=str), int(time.time()), run_id))
+        if new_status in ("completed", "failed", "cancelled"):
+            event_bus.emit(WorkerCompleted(run_id=run_id, status=new_status, attempt_count=len(attempts)))
         return self.get(run_id)
