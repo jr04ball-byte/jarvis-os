@@ -1,0 +1,112 @@
+# V24 — main.py Decomposition Proposal (NEEDS APPROVAL — no code moved yet)
+
+Status: **PROPOSAL**. This document changes nothing. Execution requires human
+approval and then proceeds in one branch + PR per phase, each gated by the
+full suite + CI. Generated from an AST audit of `api-gateway/main.py` in
+Cycle 6 (see evidence appendix).
+
+## 1. Current state (measured, not estimated)
+
+- `api-gateway/main.py`: **2975 lines, ~40% of all Python (7336 LOC / 33 files)**
+- **97 route handlers**: 65× `/v1/*`, 26× UI/static, 4× `/auth/*`, 1× `/gmail`, 1× `/calendar`
+- Embedded persistence layer living inside the web layer:
+  - `ConversationDB` (lines 375–481, 107 LOC)
+  - `DocumentRAG` (lines 485–574, 90 LOC)
+  - `PerformanceMonitor` (lines 578–601, 24 LOC)
+- 30 Pydantic request models scattered across the file
+- Largest handlers: `_run_project_autofix_cycle` (97), `stream_chat` (73),
+  `_run_agent_loop` (68)
+- Module-level singletons created at import: `db`, `rag`, `orchestrator`,
+  `project_worker_runs`, `router_engine` (via `brains`), `CONNECTIONS_PATH`
+- Only 3 test files import `main` (`test_routing_v181`, `test_voice_turn`,
+  `test_sqlite_lifecycle`) — refactor blast radius is small **if** `main`
+  keeps working as an importable shim
+- No production module imports `main` (leaf node). `main` imports 12 local
+  modules. Cycle risk is low **provided** new route modules never import
+  each other (rule below)
+
+Why this is the top debt: every feature since V13 landed in one file, so
+ownership, review, and testing all bottleneck on `main.py`. Nothing is
+broken — this is about the next 10 features, not the last 10.
+
+## 2. Target layout (new files only; nothing deleted until Phase 4)
+
+```text
+api-gateway/
+  main.py              # thin shim: `from app import app` + uvicorn entry (kept)
+  app.py               # NEW: create_app() factory, middleware, lifespan, router registration
+  deps.py              # NEW: singletons (db, rag, orchestrator, worker runs, paths)
+  schemas.py           # NEW: all ~30 Pydantic request models, moved verbatim
+  store.py             # NEW: ConversationDB, DocumentRAG, PerformanceMonitor, moved verbatim
+  routes/
+    __init__.py        # NEW: helper to register all routers
+    chat.py            # NEW: chat/completions, completions-rag, compare, sales/chat, gemini/*
+    conversations.py   # NEW: conversations, messages, documents, research/search
+    artifacts.py       # NEW: artifacts CRUD
+    voice.py           # NEW: voice/*, deepgram-*
+    google.py          # NEW: auth/google/*, gmail/*, calendar/*
+    system.py          # NEW: /, /health, /ready, /stats, /v1/system/*, /v1/performance
+    orchestrator.py    # NEW: /v1/orchestrator/*, /v1/agent/pending
+    worker.py          # NEW: /v1/project-worker/*, /v1/tools*, /v1/computer/*
+    connections.py     # NEW: /v1/connections/*, /v1/model-lab/*, /v1/models
+    agent.py           # NEW: /v1/agent/chat, /v1/agent/confirm, agent loop helpers
+    ui.py              # NEW: dashboard/voice/companion/godseye pages + blender assets
+```
+
+## 3. Dependency rules (enforced by review + a future import-lint gate)
+
+1. Routes import from `deps`, `schemas`, `store`, services — never from each other.
+2. Stores import stdlib only (`sqlite3`, `threading`, `pathlib`).
+3. Providers own no business logic (already true — Cycle 3 contracts pin this).
+4. `main.py` stays importable until Phase 4 and keeps exporting `app`
+   (uvicorn entry `main:app` and the 3 test importers keep working).
+
+## 4. Phased execution (one branch + PR + green CI per phase)
+
+- **P0 — scaffolding, zero behavior change**: add `app.py` (`create_app`
+  building the identical app), `deps.py` (singletons moved), `schemas.py`
+  (models moved). `main.py` imports from them. Verify: suite + TestClient
+  smoke (`/health`, `/ready`, one chat route).
+- **P1 — stores**: move `ConversationDB`/`DocumentRAG`/`PerformanceMonitor`
+  to `store.py`; `main` re-exports. Verify: suite + new
+  `test_sqlite_lifecycle.py` (already pins Windows file-lock behavior).
+- **P2 — routes in 3 PRs**: (a) system + ui + connections, (b) chat +
+  conversations + artifacts + voice, (c) orchestrator + worker + agent +
+  google. Each PR moves handlers verbatim (formatting only via ruff).
+  Verify per PR: suite + route smoke list.
+- **P3 — cleanup**: `main.py` becomes `from app import app` + `__main__`
+  block. Add import-lint gate (no route-to-route imports). Close this proposal.
+
+Estimated: 6 PRs total. No phase changes behavior; diffs are moves +
+import rewrites.
+
+## 5. Risks and mitigations
+
+| Risk | Mitigation |
+|---|---|
+| Circular imports via shared singletons | Singletons live only in `deps.py`; routes never import each other |
+| Behavior drift during moves | Verbatim moves; per-phase smoke list; suite must stay 77+ green |
+| Lifespan/startup ordering (lifespan vs import-time DB creation) | P0 keeps import-time semantics identical; lifespan migration is a separate proposal |
+| Merge conflicts with parallel feature work | Phases are small, ordered, and rebased one at a time |
+
+## 6. Approval requested
+
+Reply with one of:
+
+- **APPROVE** — execution starts next cycle at P0, one PR per phase
+- **APPROVE WITH CHANGES** — list module-boundary changes, proposal updated first
+- **DEFER** — proposal stays on `main` as the recorded plan; cycles continue elsewhere
+  (next: per-site PLW1510 subprocess review)
+
+## Appendix — evidence (Cycle 6 AST audit, abbreviated)
+
+- Classes: `ConversationDB` 375–481, `DocumentRAG` 485–574,
+  `PerformanceMonitor` 578–601; 27 request-model classes; 97 routes
+  (65 `/v1`, 26 `/`, 4 `/auth`, 1 `/gmail`, 1 `/calendar`)
+- `main` local imports: `brains`, `compute_manager`, `model_lab`,
+  `orchestrator`, `project_worker`, `providers`, `security`,
+  `workspace_registry`, `google_oauth`, `tools`, `local_tools`
+- Importers of `main`: only `tests/test_routing_v181.py`,
+  `tests/test_voice_turn.py`, `tests/test_sqlite_lifecycle.py`
+- Full machine-readable map: Cycle 6 work notes (audit script output,
+  retained in session history)
