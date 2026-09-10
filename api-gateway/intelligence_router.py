@@ -4,8 +4,9 @@ import os
 import re
 import time
 from collections import Counter, deque
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass
-from typing import Any, ClassVar, Iterable
+from typing import Any, ClassVar
 
 from providers import ProviderAdapter
 
@@ -133,23 +134,23 @@ class IntelligenceRouter:
         r"\b(implement|fix|debug|refactor|repository|repo|codebase|patch|commit|"
         r"write code|edit code|modify code|unit test|integration test|build failure|"
         r"typescript|javascript|python|powershell|dockerfile|migration)\b",
-        re.I,
+        re.IGNORECASE,
     )
     _DEEP = re.compile(
         r"\b(architect|architecture|distributed|consensus|raft|paxos|threat model|"
         r"security review|root cause|complex|deep analysis|production ready|performance|"
         r"race condition|idempotenc|database design|system design|multi-agent)\b",
-        re.I,
+        re.IGNORECASE,
     )
     _PRIVATE = re.compile(
         r"\b(private|offline|local only|local-only|do not send|sensitive|confidential|secret)\b",
-        re.I,
+        re.IGNORECASE,
     )
-    _FAST = re.compile(r"\b(quick|fast|brief|simple|summarize|classify|extract)\b", re.I)
+    _FAST = re.compile(r"\b(quick|fast|brief|simple|summarize|classify|extract)\b", re.IGNORECASE)
     _RISK = re.compile(
         r"\b(delete|drop database|deploy|production|credential|secret|payment|purchase|"
         r"send email|make call|shell|powershell|administrator|admin|registry|format disk)\b",
-        re.I,
+        re.IGNORECASE,
     )
 
     MODES: ClassVar[set[str]] = {"auto", "fast", "normal", "deep", "private", "coding", "autopilot"}

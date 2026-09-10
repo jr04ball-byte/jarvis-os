@@ -251,7 +251,7 @@ class DocumentUpload(BaseModel):
 
 # ==================== Smart Model Routing ====================
 
-_DEEP_HINTS = re.compile(r"\b(code|coding|debug|debugging|program|programming|architect|architecture|algorithm|algorithms|refactor|repository|repo|sql|python|javascript|typescript|powershell|bash|docker|api design|system design|reasoning|analyze|analysis|deep|complex|math|prove|proof|research|security|threat model|consensus|raft|paxos|quorum|replicat\w+|leader\s+election|fault\s+toleran\w+|distributed\s+(systems?|databases?|computing|architecture|consensus)|database\s+architecture|consistenc\w*)\b", re.I)
+_DEEP_HINTS = re.compile(r"\b(code|coding|debug|debugging|program|programming|architect|architecture|algorithm|algorithms|refactor|repository|repo|sql|python|javascript|typescript|powershell|bash|docker|api design|system design|reasoning|analyze|analysis|deep|complex|math|prove|proof|research|security|threat model|consensus|raft|paxos|quorum|replicat\w+|leader\s+election|fault\s+toleran\w+|distributed\s+(systems?|databases?|computing|architecture|consensus)|database\s+architecture|consistenc\w*)\b", re.IGNORECASE)
 
 
 def select_model(requested: str, messages: list | None = None, assistant_profile: str = "general") -> str:
@@ -1643,7 +1643,7 @@ async def list_models():
                 ]
                 return {"object": "list", "data": models}
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed to fetch models: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Failed to fetch models: {e!s}")
 
     return {"object": "list", "data": []}
 
@@ -2200,14 +2200,14 @@ async def chat_completion(request: Request, chat_request: ChatRequest):
         except httpx.RequestError as e:
             raise HTTPException(
                 status_code=503,
-                detail=f"Ollama service unavailable: {str(e)}"
+                detail=f"Ollama service unavailable: {e!s}"
             )
         except HTTPException:
             raise
         except Exception as e:
             raise HTTPException(
                 status_code=500,
-                detail=f"Chat completion failed: {str(e)}"
+                detail=f"Chat completion failed: {e!s}"
             )
 
 # ==================== Sales Machine ====================
@@ -2803,7 +2803,7 @@ Rules:
                 return {"project": orchestrator.get_project(body.project_id), "completed_this_run": completed, "status": "awaiting_approval", "result": result}
 
             answer = ((result.get("message") or {}).get("content") or "")
-            if task["kind"] == "verify" and re.search(r"VERIFIED\s*:\s*NO", answer, re.I):
+            if task["kind"] == "verify" and re.search(r"VERIFIED\s*:\s*NO", answer, re.IGNORECASE):
                 orchestrator.transition(task["id"], "blocked", result=result, error=answer[:2000])
                 return {"project": orchestrator.get_project(body.project_id), "completed_this_run": completed, "status": "blocked", "result": result}
             orchestrator.transition(task["id"], "completed", result=result)
@@ -2838,7 +2838,7 @@ async def orchestrator_autopilot(request: Request, body: OrchestratorAutopilotRe
 
 # ==================== Adaptive Voice Turn ====================
 
-_VOICE_TOOL_HINTS = re.compile(r"\b(send|email|e-mail|gmail|inbox|calendar|invite|meeting|schedule|remind|home assistant|turn on|turn off|switch on|switch off|open|launch|create|delete|remove|cancel|control|device|lights?|thermostat|lock|unlock|play|pause|volume|file|folder|search my|check my|sales machine|email agent|approve|confirm)\b", re.I)
+_VOICE_TOOL_HINTS = re.compile(r"\b(send|email|e-mail|gmail|inbox|calendar|invite|meeting|schedule|remind|home assistant|turn on|turn off|switch on|switch off|open|launch|create|delete|remove|cancel|control|device|lights?|thermostat|lock|unlock|play|pause|volume|file|folder|search my|check my|sales machine|email agent|approve|confirm)\b", re.IGNORECASE)
 
 
 def select_voice_path(text: str, assistant_profile: str = "general") -> str:

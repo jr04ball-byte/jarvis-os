@@ -11,10 +11,11 @@ import sqlite3
 import subprocess
 import time
 import uuid
+from collections.abc import Iterable
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -138,10 +139,10 @@ def classify_verification_failure(verification: dict[str, Any]) -> dict[str, Any
         if item.get('exit_code') == 127:
             env_hits.append('command executable not found')
         for pat in env_patterns:
-            if re.search(pat, text, re.I):
+            if re.search(pat, text, re.IGNORECASE):
                 env_hits.append(pat)
         for pat in code_patterns:
-            if re.search(pat, text, re.I):
+            if re.search(pat, text, re.IGNORECASE):
                 code_hits.append(pat)
     if env_hits and not code_hits:
         return {'kind': 'environment', 'confidence': 0.95, 'reasons': sorted(set(env_hits))[:8]}
