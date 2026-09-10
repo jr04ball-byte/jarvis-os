@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Any, AsyncGenerator, Dict, List, Optional
+from typing import Any, AsyncGenerator
 
 import httpx
 
@@ -39,7 +39,7 @@ class GeminiProvider(ProviderAdapter):
         return bool(self.api_key)
 
     @staticmethod
-    def _contents(messages: List[ProviderMessage]) -> List[Dict[str, Any]]:
+    def _contents(messages: list[ProviderMessage]) -> list[dict[str, Any]]:
         contents = []
         system_text = []
         for msg in messages[-100:]:
@@ -56,7 +56,7 @@ class GeminiProvider(ProviderAdapter):
                 contents.append({"role": "user", "parts": [{"text": prefix}]})
         return contents
 
-    async def complete(self, messages: List[ProviderMessage], *, temperature: float = 0.7, max_tokens: int = 1024, task_context: Optional[Dict[str, Any]] = None) -> ProviderResult:
+    async def complete(self, messages: list[ProviderMessage], *, temperature: float = 0.7, max_tokens: int = 1024, task_context: dict[str, Any] | None = None) -> ProviderResult:
         if not self.configured:
             raise RuntimeError("gemini not configured")
         payload = {
@@ -81,7 +81,7 @@ class GeminiProvider(ProviderAdapter):
         usage = data.get("usageMetadata") or {}
         return ProviderResult(_text_parts(parts), self.name, self.model, usage=usage)
 
-    async def stream(self, messages: List[ProviderMessage], *, temperature: float = 0.7, max_tokens: int = 1024, task_context: Optional[Dict[str, Any]] = None) -> AsyncGenerator[str, None]:
+    async def stream(self, messages: list[ProviderMessage], *, temperature: float = 0.7, max_tokens: int = 1024, task_context: dict[str, Any] | None = None) -> AsyncGenerator[str, None]:
         if not self.configured:
             raise RuntimeError("gemini not configured")
         payload = {
@@ -118,7 +118,7 @@ class GeminiProvider(ProviderAdapter):
                     if text:
                         yield text
 
-    async def health(self) -> Dict[str, Any]:
+    async def health(self) -> dict[str, Any]:
         if not self.configured:
             return {"online": False, "configured": False, "reason": "missing GEMINI_API_KEY"}
         try:

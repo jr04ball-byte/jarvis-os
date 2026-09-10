@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, AsyncGenerator, Dict, List, Optional
+from typing import Any, AsyncGenerator
 
 
 @dataclass
@@ -16,8 +16,8 @@ class ProviderResult:
     content: str
     provider: str
     model: str
-    usage: Dict[str, Any] = field(default_factory=dict)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    usage: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 class ProviderAdapter(ABC):
@@ -42,21 +42,21 @@ class ProviderAdapter(ABC):
     @abstractmethod
     async def complete(
         self,
-        messages: List[ProviderMessage],
+        messages: list[ProviderMessage],
         *,
         temperature: float = 0.7,
         max_tokens: int = 1024,
-        task_context: Optional[Dict[str, Any]] = None,
+        task_context: dict[str, Any] | None = None,
     ) -> ProviderResult:
         raise NotImplementedError
 
     async def stream(
         self,
-        messages: List[ProviderMessage],
+        messages: list[ProviderMessage],
         *,
         temperature: float = 0.7,
         max_tokens: int = 1024,
-        task_context: Optional[Dict[str, Any]] = None,
+        task_context: dict[str, Any] | None = None,
     ) -> AsyncGenerator[str, None]:
         result = await self.complete(
             messages,
@@ -67,10 +67,10 @@ class ProviderAdapter(ABC):
         yield result.content
 
     @abstractmethod
-    async def health(self) -> Dict[str, Any]:
+    async def health(self) -> dict[str, Any]:
         raise NotImplementedError
 
-    def describe(self) -> Dict[str, Any]:
+    def describe(self) -> dict[str, Any]:
         return {
             "name": self.name,
             "kind": self.kind,

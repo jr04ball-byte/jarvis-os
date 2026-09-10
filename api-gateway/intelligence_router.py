@@ -5,7 +5,7 @@ import re
 import time
 from collections import Counter, deque
 from dataclasses import asdict, dataclass
-from typing import Any, Dict, Iterable, List
+from typing import Any, Iterable
 
 from providers import ProviderAdapter
 
@@ -25,7 +25,7 @@ class TaskAssessment:
     risk: int
     reason: str
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 
@@ -33,11 +33,11 @@ class TaskAssessment:
 class RouteDecision:
     requested: str
     selected: str
-    chain: List[str]
+    chain: list[str]
     assessment: TaskAssessment
     reason: str
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         return {
             "requested": self.requested,
             "selected": self.selected,
@@ -66,7 +66,7 @@ class RouterTelemetry:
         if not ok:
             self.failures[provider] += 1
 
-    def snapshot(self) -> Dict[str, Any]:
+    def snapshot(self) -> dict[str, Any]:
         return {
             "calls": dict(self.counts),
             "failures": dict(self.failures),
@@ -80,8 +80,8 @@ class ProviderCircuitBreaker:
     def __init__(self, threshold: int = 3, cooldown_seconds: int = 30) -> None:
         self.threshold = max(1, int(threshold))
         self.cooldown_seconds = max(1, int(cooldown_seconds))
-        self._failures: Dict[str, int] = {}
-        self._opened_until: Dict[str, float] = {}
+        self._failures: dict[str, int] = {}
+        self._opened_until: dict[str, float] = {}
 
     def record(self, provider: str, ok: bool) -> None:
         now = time.time()
@@ -104,10 +104,10 @@ class ProviderCircuitBreaker:
             return False
         return True
 
-    def filter(self, chain: Iterable[str]) -> List[str]:
+    def filter(self, chain: Iterable[str]) -> list[str]:
         return [name for name in chain if not self.is_open(name)]
 
-    def snapshot(self) -> Dict[str, Any]:
+    def snapshot(self) -> dict[str, Any]:
         now = time.time()
         names = set(self._failures) | set(self._opened_until)
         return {
@@ -154,7 +154,7 @@ class IntelligenceRouter:
 
     MODES = {"auto", "fast", "normal", "deep", "private", "coding", "autopilot"}
 
-    def __init__(self, providers: Dict[str, ProviderAdapter]) -> None:
+    def __init__(self, providers: dict[str, ProviderAdapter]) -> None:
         self.providers = providers
         self.primary = _env("JARVIS_PRIMARY_BRAIN", "gemini").lower()
         self.deep_provider = _env("JARVIS_DEEP_BRAIN", "openai").lower()
@@ -218,8 +218,8 @@ class IntelligenceRouter:
             reason=reason,
         )
 
-    def _unique_existing(self, names: Iterable[str]) -> List[str]:
-        out: List[str] = []
+    def _unique_existing(self, names: Iterable[str]) -> list[str]:
+        out: list[str] = []
         for name in names:
             name = (name or "").lower()
             if name in self.providers and name not in out:
@@ -254,19 +254,19 @@ class IntelligenceRouter:
             raise RuntimeError("no intelligence providers registered")
         return RouteDecision(req, chain[0], chain, assessment, reason)
 
-    def provider_context(self, decision: RouteDecision, **extra: Any) -> Dict[str, Any]:
+    def provider_context(self, decision: RouteDecision, **extra: Any) -> dict[str, Any]:
         context = decision.assessment.as_dict()
         context.update(extra)
         return context
 
-    def eligible_chain(self, chain: Iterable[str]) -> List[str]:
+    def eligible_chain(self, chain: Iterable[str]) -> list[str]:
         return self.circuit.filter(chain)
 
     def record_provider_result(self, provider: str, *, ok: bool, elapsed_ms: int, route_reason: str) -> None:
         self.telemetry.record(provider, ok=ok, elapsed_ms=elapsed_ms, route_reason=route_reason)
         self.circuit.record(provider, ok)
 
-    def snapshot(self) -> Dict[str, Any]:
+    def snapshot(self) -> dict[str, Any]:
         return {
             "policy": {
                 "primary": self.primary,

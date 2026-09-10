@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import httpx
 from workspace_registry import is_registered_workspace
@@ -39,14 +39,14 @@ class OpenCodeProvider(ProviderAdapter):
         self.agent = _env("OPENCODE_AGENT")
 
     @staticmethod
-    def _content(messages: List[ProviderMessage]) -> str:
+    def _content(messages: list[ProviderMessage]) -> str:
         lines = []
         for msg in messages:
             role = {"assistant": "Assistant", "system": "System", "user": "User"}.get(msg.role, msg.role)
             lines.append(f"{role}: {msg.content}")
         return "\n\n".join(lines)
 
-    async def complete(self, messages: List[ProviderMessage], *, temperature: float = 0.7, max_tokens: int = 1024, task_context: Optional[Dict[str, Any]] = None) -> ProviderResult:
+    async def complete(self, messages: list[ProviderMessage], *, temperature: float = 0.7, max_tokens: int = 1024, task_context: dict[str, Any] | None = None) -> ProviderResult:
         headers = {"Content-Type": "application/json"}
         # OpenCode scopes the server instance to this directory using the
         # x-opencode-directory header. This makes the workspace boundary real,
@@ -82,7 +82,7 @@ class OpenCodeProvider(ProviderAdapter):
             if session.status_code not in (200, 201):
                 raise RuntimeError(f"opencode session {session.status_code}: {session.text[:200]}")
             session_id = session.json().get("id")
-            body: Dict[str, Any] = {
+            body: dict[str, Any] = {
                 "model": model,
                 "system": system,
                 "parts": [{"type": "text", "text": self._content(messages)}],
@@ -102,7 +102,7 @@ class OpenCodeProvider(ProviderAdapter):
             text = _text_parts((data.get("info") or {}).get("parts"))
         return ProviderResult(text, self.name, self.model, metadata={"session_id": session_id})
 
-    async def health(self) -> Dict[str, Any]:
+    async def health(self) -> dict[str, Any]:
         try:
             username = _env("OPENCODE_SERVER_USERNAME", "opencode")
             password = _env("OPENCODE_SERVER_PASSWORD")

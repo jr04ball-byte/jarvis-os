@@ -83,7 +83,7 @@ from collections import defaultdict, deque
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, List, Literal, Optional
+from typing import Any, Literal
 
 import httpx
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -224,11 +224,11 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     model: str = "auto"
-    messages: List[ChatMessage]
+    messages: list[ChatMessage]
     stream: bool = False
-    temperature: Optional[float] = 0.7
-    max_tokens: Optional[int] = 1024
-    conversation_id: Optional[int] = None
+    temperature: float | None = 0.7
+    max_tokens: int | None = 1024
+    conversation_id: int | None = None
     use_rag: bool = False
     assistant_profile: str = "general"
 
@@ -243,7 +243,7 @@ class ConversationMessage(BaseModel):
 
 class CompareRequest(BaseModel):
     prompt: str
-    models: List[str] = Field(default_factory=lambda: [FAST_MODEL, DEEP_MODEL])
+    models: list[str] = Field(default_factory=lambda: [FAST_MODEL, DEEP_MODEL])
 
 class DocumentUpload(BaseModel):
     doc_id: str
@@ -363,7 +363,7 @@ SAAS BOUNDARY
 def system_prompt_for(profile: str) -> str:
     return SALES_SYSTEM_PROMPT if profile.lower() == "sales" else CORE_SYSTEM_PROMPT
 
-def apply_system_prompt(messages: List[ChatMessage], profile: str) -> List[ChatMessage]:
+def apply_system_prompt(messages: list[ChatMessage], profile: str) -> list[ChatMessage]:
     """Guarantee the core behavior is present without duplicating it on every request."""
     system = system_prompt_for(profile)
     if messages and messages[0].role == "system":
@@ -445,7 +445,7 @@ class ConversationDB:
                 (conv_id, role, content)
             )
 
-    def get_conversation(self, conv_id: int, limit: Optional[int] = None):
+    def get_conversation(self, conv_id: int, limit: int | None = None):
         with self._lock, self._connect() as conn:
             if limit is None:
                 cursor = conn.execute(
@@ -744,10 +744,10 @@ async def test_connection(connection_id: str):
 # ==================== Google Gemini Cloud ====================
 
 class GeminiChatRequest(BaseModel):
-    messages: List[ChatMessage]
-    model: Optional[str] = None
-    temperature: Optional[float] = 0.7
-    max_tokens: Optional[int] = 1024
+    messages: list[ChatMessage]
+    model: str | None = None
+    temperature: float | None = 0.7
+    max_tokens: int | None = 1024
 
 @app.get("/v1/gemini/status")
 async def gemini_status():
@@ -807,7 +807,7 @@ GEMINI_AUTH_TOKEN_URL = os.getenv(
 )
 
 class GeminiLiveTokenRequest(BaseModel):
-    ttl_minutes: Optional[int] = 10
+    ttl_minutes: int | None = 10
 
 @app.post("/v1/gemini/live-token")
 @limiter.limit("10/minute")
@@ -864,8 +864,8 @@ OPENCODE_SERVER_URL = os.getenv("OPENCODE_SERVER_URL", "http://127.0.0.1:4096")
 
 class OpenCodeTaskRequest(BaseModel):
     prompt: str = Field(min_length=1, max_length=12000)
-    path: Optional[str] = None
-    target: Optional[str] = None
+    path: str | None = None
+    target: str | None = None
     mode: Literal["inspect", "build", "fix", "refactor"] = "inspect"
 
 @app.post("/v1/opencode/task")
@@ -948,8 +948,8 @@ async def deepgram_token():
 
 class DeepgramSpeakRequest(BaseModel):
     text: str
-    model: Optional[str] = None
-    speed: Optional[float] = 1.0
+    model: str | None = None
+    speed: float | None = 1.0
 
 @app.post("/v1/deepgram-speak")
 async def deepgram_speak(req: DeepgramSpeakRequest):
@@ -1030,9 +1030,9 @@ class ArtifactRequest(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 class ArtifactPatch(BaseModel):
-    title: Optional[str] = Field(default=None, max_length=200)
-    content: Optional[str] = Field(default=None, max_length=1_000_000)
-    metadata: Optional[dict[str, Any]] = None
+    title: str | None = Field(default=None, max_length=200)
+    content: str | None = Field(default=None, max_length=1_000_000)
+    metadata: dict[str, Any] | None = None
 
 def _artifact_path(artifact_id: str) -> Path:
     if not re.fullmatch(r"[a-f0-9]{32}", artifact_id):
@@ -1423,7 +1423,7 @@ async def auth_google_start():
     return {"url": google_oauth.build_auth_url()}
 
 @app.get("/auth/google/callback")
-async def auth_google_callback(code: Optional[str] = None, state: Optional[str] = None, error: Optional[str] = None):
+async def auth_google_callback(code: str | None = None, state: str | None = None, error: str | None = None):
     """Google redirects here after user consents. Exchanges code → tokens,
     stores them encrypted, returns the connected account email."""
     if error:
@@ -1710,8 +1710,8 @@ class OrchestratorGoal(BaseModel):
 class OrchestratorTransition(BaseModel):
     task_id: str
     status: str
-    result: Optional[Any] = None
-    error: Optional[str] = None
+    result: Any | None = None
+    error: str | None = None
 
 @app.get("/v1/orchestrator/policy")
 async def orchestrator_policy():
@@ -1745,7 +1745,7 @@ class ProjectWorkerAutofixRequest(BaseModel):
     goal: str = Field(min_length=1, max_length=12000)
     max_retries: int = Field(default=2, ge=0, le=4)
     run_lint: bool = False
-    resume_run_id: Optional[str] = None
+    resume_run_id: str | None = None
 
 
 def _project_worker_target(target_id: str) -> dict:
@@ -1997,7 +1997,7 @@ async def orchestrator_audit(project_id: str, limit: int = 100):
 
 async def stream_chat(request: ChatRequest):
     """Stream Ollama output and persist the assistant reply after completion."""
-    accumulated: List[str] = []
+    accumulated: list[str] = []
     try:
         async with httpx.AsyncClient(timeout=300.0) as client:
             ollama_request = {
@@ -2318,7 +2318,7 @@ SAAS BOUNDARY
 def system_prompt_for(profile: str) -> str:
     return SALES_SYSTEM_PROMPT if profile.lower() == "sales" else CORE_SYSTEM_PROMPT
 
-def apply_system_prompt(messages: List[ChatMessage], profile: str) -> List[ChatMessage]:
+def apply_system_prompt(messages: list[ChatMessage], profile: str) -> list[ChatMessage]:
     """Guarantee the core behavior is present without duplicating it on every request."""
     system = system_prompt_for(profile)
     if messages and messages[0].role == "system":
@@ -2560,9 +2560,9 @@ async def _agent_tool_impl(name: str, args: dict, confirmed: bool=False):
 
 class AgentChatRequest(BaseModel):
     model: str = "auto"
-    messages: List[ChatMessage]
+    messages: list[ChatMessage]
     assistant_profile: str = "general"
-    conversation_id: Optional[int] = None
+    conversation_id: int | None = None
     max_tool_rounds: int = 5
 
 
@@ -2592,8 +2592,8 @@ def _update_confirmation_resume(ticket: str, **updates) -> None:
 
 
 async def _run_agent_loop(model: str, messages: list, assistant_profile: str,
-                          conversation_id: Optional[int], max_tool_rounds: int,
-                          initial_tool_result: Optional[dict] = None) -> dict:
+                          conversation_id: int | None, max_tool_rounds: int,
+                          initial_tool_result: dict | None = None) -> dict:
     """Run the agent until it has a final answer or one sensitive action needs approval.
 
     The full in-flight state is stored on confirmation tickets, so approving a tool
@@ -2854,11 +2854,11 @@ def select_voice_path(text: str, assistant_profile: str = "general") -> str:
 
 class VoiceTurnRequest(BaseModel):
     model: str = "auto"
-    messages: List[ChatMessage]
-    conversation_id: Optional[int] = None
+    messages: list[ChatMessage]
+    conversation_id: int | None = None
     assistant_profile: str = "general"
-    temperature: Optional[float] = 0.7
-    max_tokens: Optional[int] = 512
+    temperature: float | None = 0.7
+    max_tokens: int | None = 512
 
 
 @app.post("/v1/voice/turn")

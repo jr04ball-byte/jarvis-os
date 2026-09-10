@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Any, AsyncGenerator, Dict, List, Optional
+from typing import Any, AsyncGenerator
 
 import httpx
 
@@ -26,15 +26,15 @@ class OllamaProvider(ProviderAdapter):
         self.base_url = _env("OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
 
     @staticmethod
-    def _messages(messages: List[ProviderMessage]) -> List[Dict[str, str]]:
+    def _messages(messages: list[ProviderMessage]) -> list[dict[str, str]]:
         return [{"role": m.role, "content": m.content} for m in messages[-100:]]
 
-    def select_model(self, task_context: Optional[Dict[str, Any]]) -> str:
+    def select_model(self, task_context: dict[str, Any] | None) -> str:
         if (task_context or {}).get("speed_priority", 0) >= 7 or (task_context or {}).get("mode") == "fast":
             return self.fast_model
         return self.model
 
-    async def complete(self, messages: List[ProviderMessage], *, temperature: float = 0.7, max_tokens: int = 1024, task_context: Optional[Dict[str, Any]] = None) -> ProviderResult:
+    async def complete(self, messages: list[ProviderMessage], *, temperature: float = 0.7, max_tokens: int = 1024, task_context: dict[str, Any] | None = None) -> ProviderResult:
         model = self.select_model(task_context)
         payload = {
             "model": model,
@@ -59,7 +59,7 @@ class OllamaProvider(ProviderAdapter):
             },
         )
 
-    async def stream(self, messages: List[ProviderMessage], *, temperature: float = 0.7, max_tokens: int = 1024, task_context: Optional[Dict[str, Any]] = None) -> AsyncGenerator[str, None]:
+    async def stream(self, messages: list[ProviderMessage], *, temperature: float = 0.7, max_tokens: int = 1024, task_context: dict[str, Any] | None = None) -> AsyncGenerator[str, None]:
         model = self.select_model(task_context)
         payload = {
             "model": model,
@@ -85,7 +85,7 @@ class OllamaProvider(ProviderAdapter):
                     if data.get("done"):
                         break
 
-    async def health(self) -> Dict[str, Any]:
+    async def health(self) -> dict[str, Any]:
         try:
             async with httpx.AsyncClient(timeout=3.0) as client:
                 response = await client.get(f"{self.base_url}/api/tags")
