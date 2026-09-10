@@ -30,10 +30,10 @@ class OpenCodeProvider(ProviderAdapter):
     supports_tools = True
     supports_local = True
 
-    def __init__(self) -> None:
+    def __init__(self, model: str | None = None) -> None:
         self.base_url = _env("OPENCODE_SERVER_URL", "http://127.0.0.1:4096").rstrip("/")
         self.provider_id = _env("OPENCODE_PROVIDER", "opencode-go")
-        model_id = _env("OPENCODE_MODEL", "deepseek-v4-flash")
+        model_id = model or _env("OPENCODE_MODEL", "deepseek-v4-flash")
         self.model_id = model_id
         super().__init__(f"{self.provider_id}/{model_id}")
         self.agent = _env("OPENCODE_AGENT")

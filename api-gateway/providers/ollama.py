@@ -20,8 +20,8 @@ class OllamaProvider(ProviderAdapter):
     supports_tools = True
     supports_local = True
 
-    def __init__(self) -> None:
-        super().__init__(_env("JARVIS_DEEP_MODEL", "qwen3.5:9b"))
+    def __init__(self, model: str | None = None) -> None:
+        super().__init__(model or _env("JARVIS_DEEP_MODEL", "qwen3.5:9b"))
         self.fast_model = _env("JARVIS_FAST_MODEL", "gemma3:4b")
         self.base_url = _env("OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
 
