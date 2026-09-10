@@ -1,0 +1,153 @@
+jarvis-os-work/ (commit: see git log; generated Cycle 7)
+|-- .github
+|   `-- workflows
+|       `-- main.yml
+|-- api-gateway
+|   |-- assets
+|   |   |-- bg-loop.mp4
+|   |   |-- bg-loop.webm
+|   |   |-- bg-poster.png
+|   |   |-- command-center-loop.mp4
+|   |   |-- command-center-loop.webm
+|   |   |-- command-center-poster.png
+|   |   |-- orb-loop.mp4
+|   |   |-- orb-loop.webm
+|   |   `-- orb-poster.png
+|   |-- providers
+|   |   |-- __init__.py
+|   |   |-- base.py
+|   |   |-- gemini.py
+|   |   |-- ollama.py
+|   |   |-- openai_provider.py
+|   |   `-- opencode.py
+|   |-- .dockerignore
+|   |-- brains.py
+|   |-- companion-manifest.json
+|   |-- companion-sw.js
+|   |-- companion.html
+|   |-- compute_manager.py
+|   |-- dashboard-classic.html
+|   |-- dashboard.html
+|   |-- Dockerfile
+|   |-- godseye.html
+|   |-- google_oauth.py
+|   |-- intelligence_router.py
+|   |-- local_tools.py
+|   |-- main.py
+|   |-- model_lab.py
+|   |-- orchestrator.py
+|   |-- project_worker.py
+|   |-- requirements.txt
+|   |-- security.py
+|   |-- tools.py
+|   |-- voice-engine.js
+|   |-- voice-live.html
+|   |-- voice.html
+|   `-- workspace_registry.py
+|-- desktop-companion
+|   |-- index.html
+|   |-- main.cjs
+|   |-- package.json
+|   |-- preload.cjs
+|   |-- renderer.js
+|   `-- styles.css
+|-- host-bridge
+|   |-- host_bridge.py
+|   |-- requirements.txt
+|   `-- start-host-bridge.bat
+|-- ios-companion
+|   |-- AICompanion.swift
+|   `-- README.md
+|-- librechat
+|   |-- docker-compose.yml
+|   `-- librechat.yaml
+|-- reports
+|-- tests
+|   |-- test_agent_state.py
+|   |-- test_orchestrator.py
+|   |-- test_provider_contracts.py
+|   |-- test_routing_v181.py
+|   |-- test_sqlite_lifecycle.py
+|   |-- test_tool_router.py
+|   |-- test_v18_voice.py
+|   |-- test_v201_autopilot.py
+|   |-- test_v21_multibrain.py
+|   |-- test_v221_self_correction.py
+|   |-- test_v222_project_worker.py
+|   |-- test_v22_project_worker.py
+|   |-- test_v23_command_center.py
+|   |-- test_voice_turn.py
+|   `-- voice-engine.test.js
+|-- tools
+|   |-- blender_bg_bake.py
+|   |-- blender_command_center_bake.py
+|   `-- blender_orb_bake.py
+|-- .coverage
+|-- .env.example
+|-- .gitignore
+|-- AI-Launcher.bat
+|-- AI-System-Core.bat
+|-- AI-System.bat
+|-- BAKE-JARVIS-DASHBOARD.bat
+|-- build-windows-app.bat
+|-- client.py
+|-- complete-setup.bat
+|-- CONNECT-GMAIL.bat
+|-- create-desktop-shortcut.bat
+|-- CREATE-JARVIS-DESKTOP-SHORTCUT.bat
+|-- create-shortcut.vbs
+|-- DEEPGRAM-VOICE-SETUP.txt
+|-- docker-compose.lan.yml
+|-- docker-compose.override.yml
+|-- docker-compose.yml
+|-- IMPROVEMENT_GUIDE.md
+|-- install-core-app.bat
+|-- INSTALL-JARVIS-V15.bat
+|-- install.bat
+|-- install.sh
+|-- KEEP-YOUR-ENV.txt
+|-- launcher-config.example.json
+|-- launcher.py
+|-- LOCAL-TOOLS.md
+|-- Modelfile.llama
+|-- OAUTH_README.md
+|-- OPEN-JARVIS.bat
+|-- package.json
+|-- README.md
+|-- requirements-launcher.txt
+|-- SET-DEEPGRAM-KEY.bat
+|-- SET-GEMINI-CLOUD.bat
+|-- SET-QWEN35-9B.bat
+|-- setup-docker.bat
+|-- setup-launcher.bat
+|-- start-ai.bat
+|-- START-DESKTOP-COMPANION.bat
+|-- START-HOST-BRIDGE-ADMIN.bat
+|-- START-JARVIS-GODSEYE.bat
+|-- START-JARVIS.bat
+|-- START-LOCAL-TEST.bat
+|-- STOP-LOCAL-TEST.bat
+|-- TEST-DASHBOARD.bat
+|-- TEST-INSTRUCTIONS.txt
+|-- TEST-JARVIS-V23.bat
+|-- V13-JARVIS-UPDATE.md
+|-- V14-JARVIS-UPDATE.md
+|-- V15-JARVIS-DASHBOARD-UPDATE.md
+|-- V16-ADAPTIVE-COMPUTE-UPDATE.md
+|-- V16-MODEL-LAB-UPDATE.md
+|-- V17-SMART-MODEL-ROUTER.md
+|-- V18-NATURAL-VOICE-UPDATE.md
+|-- V18.1-ROUTING-FIX.md
+|-- V18.2-ADAPTIVE-VOICE.md
+|-- V18.2.1-VOICE-FIX.md
+|-- V19-WINDOWS-COMPUTER-CONTROL.md
+|-- V20-JARVIS-ORCHESTRATOR.md
+|-- V20.1-JARVIS-AUTOPILOT.md
+|-- V20.2-JARVIS-PROJECT-WORKER.md
+|-- V21-MULTI-BRAIN-INTELLIGENCE-ROUTER.md
+|-- V22-JARVIS-PROJECT-WORKER.md
+|-- V22.1-JARVIS-SELF-CORRECTION.md
+|-- V22.2-JARVIS-AUTOPILOT-INTEGRATION.md
+|-- V23-JARVIS-COMMAND-CENTER-STABILITY.md
+|-- V24-MAIN-DECOMPOSITION-PROPOSAL.md
+`-- verify-local-ai.py
