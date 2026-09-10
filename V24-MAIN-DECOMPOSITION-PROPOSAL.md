@@ -106,8 +106,24 @@ Reply with one of:
 - Added scope beyond this proposal: DI container (`AppContainer`), event bus,
   telemetry platform, coverage > 90%. These land as later phases after the
   route split; singletons move in P1 (not P0 — avoids a `main`↔`deps` cycle).
-- V24 P0 (schemas extraction) executed as `v24/p0-schemas`; singleton/DI work
-  follows with the store move.
+## 8. As-built record (P0–P2 merged; proposal superseded where noted)
+
+Executed on branches `v24/p0-schemas`, `v24/p1-stores`, `v24/p2-routes`
+(PRs #8–#10, all CI-green). Final layout differs from §2 in these deliberate ways:
+
+- `services.py` (~900 lines) holds shared business logic (selection, confirmations,
+  connections, snapshots, artifacts, agent loop, autofix cycle, tool cores).
+  Route-to-route calls were eliminated by extracting cores
+  (`execute_tool_core`, `create_artifact`, `web_search`, `build_tools_list`)
+  instead of cross-importing routers.
+- `deps.py` holds config, limiter, paths, caches, and (P3) the `AppContainer`.
+- Route files: `health, dashboard, voice, chat, workers, projects, providers,
+  auth, telemetry` (+ `brains` router untouched).
+- `main.py`: 2975 → ~110 lines (app assembly only). Target <400 MET.
+- Deduped along the way: duplicate prompt/helper definitions, dead CORE prompt
+  copy, pnpm lint loop-var bug, `__file__`-relative assets anchored per module.
+- Tests were updated to import from new homes (no disabled tests); 2 new tests
+  added during the split (middleware presence, pnpm discovery).
 
 ## Appendix — evidence (Cycle 6 AST audit, abbreviated)
 
