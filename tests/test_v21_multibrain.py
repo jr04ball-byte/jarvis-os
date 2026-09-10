@@ -1,11 +1,10 @@
-import asyncio
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "api-gateway"))
 
 from intelligence_router import IntelligenceRouter
-from providers.base import ProviderAdapter, ProviderMessage, ProviderResult
+from providers.base import ProviderAdapter, ProviderResult
 
 
 class FakeProvider(ProviderAdapter):

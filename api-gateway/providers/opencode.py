@@ -4,9 +4,9 @@ import os
 from typing import Any, Dict, List, Optional
 
 import httpx
+from workspace_registry import is_registered_workspace
 
 from .base import ProviderAdapter, ProviderMessage, ProviderResult
-from workspace_registry import is_registered_workspace
 
 
 def _env(name: str, default: str = "") -> str:

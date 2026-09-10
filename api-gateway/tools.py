@@ -4,9 +4,13 @@ All tools are explicit, auditable functions. Destructive/security-sensitive
 operations are never executed by the LLM directly; callers must request
 confirmation first.
 """
-import os, re, json, shutil, subprocess, platform
+import os
+import platform
+import re
+import subprocess
 from pathlib import Path
 from typing import Any, Optional
+
 import httpx
 
 HOME_ROOTS = [Path(p) for p in os.getenv("AI_ALLOWED_PATHS", str(Path.home())).split(os.pathsep) if p]

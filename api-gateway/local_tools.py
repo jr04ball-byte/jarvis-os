@@ -4,13 +4,13 @@ Discovery only: this module never executes a discovered creative tool. It report
 installed applications and the capabilities that the AI System can use once a
 corresponding plugin is enabled.
 """
+import json
 import os
 import platform
 import re
 import shutil
 import subprocess
 import time
-import json
 from pathlib import Path
 from typing import Any
 

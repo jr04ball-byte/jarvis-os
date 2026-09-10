@@ -1,7 +1,11 @@
-import asyncio, os, sys, tempfile
+import asyncio
+import sys
+import tempfile
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'api-gateway'))
 import tools
+
 
 def test_file_search_and_content_search():
     with tempfile.TemporaryDirectory() as d:
