@@ -142,7 +142,7 @@ from project_worker import make_worker_prompt
 from project_worker import project_health as project_worker_health_snapshot
 from project_worker import verify_workspace as project_verify_workspace
 from providers import ProviderMessage
-from routes import health
+from routes import dashboard, health
 from security import policy_snapshot as security_policy_snapshot
 from workspace_registry import get_target as workspace_target
 from workspace_registry import is_registered_workspace, target_for_workspace
@@ -185,6 +185,7 @@ app.add_middleware(
 )
 
 app.include_router(brain_router)
+app.include_router(dashboard.router)
 app.include_router(health.router)
 
 
@@ -540,49 +541,6 @@ async def research_search(body: ResearchRequest):
 # ==================== Endpoints ====================
 
 
-@app.get("/dashboard", include_in_schema=False)
-@app.get("/dashboard.html", include_in_schema=False)
-async def dashboard_ui():
-    """Primary V23 Jarvis Command Center."""
-    return FileResponse(os.path.join(os.path.dirname(__file__), "dashboard.html"), media_type="text/html")
-
-@app.get("/godseye", include_in_schema=False)
-@app.get("/godseye.html", include_in_schema=False)
-async def godseye_ui():
-    """V19 tactical globe view retained as an optional operations surface."""
-    return FileResponse(os.path.join(os.path.dirname(__file__), "godseye.html"), media_type="text/html")
-
-@app.get("/dashboard-classic", include_in_schema=False)
-@app.get("/dashboard-classic.html", include_in_schema=False)
-async def dashboard_classic_ui():
-    """Classic chat cockpit retained for compatibility."""
-    return FileResponse(os.path.join(os.path.dirname(__file__), "dashboard-classic.html"), media_type="text/html")
-
-@app.get("/orb-loop.webm", include_in_schema=False)
-@app.get("/orb-loop.mp4", include_in_schema=False)
-@app.get("/orb-poster.png", include_in_schema=False)
-@app.get("/bg-loop.webm", include_in_schema=False)
-@app.get("/bg-loop.mp4", include_in_schema=False)
-@app.get("/bg-poster.png", include_in_schema=False)
-@app.get("/command-center-loop.webm", include_in_schema=False)
-@app.get("/command-center-loop.mp4", include_in_schema=False)
-@app.get("/command-center-poster.png", include_in_schema=False)
-async def blender_dashboard_asset(request: Request):
-    """Serve Blender-baked dashboard motion assets without exposing arbitrary files."""
-    name = request.url.path.lstrip("/")
-    allowed = {
-        "orb-loop.webm", "orb-loop.mp4", "orb-poster.png",
-        "bg-loop.webm", "bg-loop.mp4", "bg-poster.png",
-        "command-center-loop.webm", "command-center-loop.mp4", "command-center-poster.png",
-    }
-    if name not in allowed:
-        raise HTTPException(404, "asset not found")
-    base = os.path.join(os.path.dirname(__file__), "assets", name)
-    if not os.path.isfile(base):
-        raise HTTPException(404, "Blender dashboard asset not baked yet")
-    media = "video/webm" if name.endswith(".webm") else ("video/mp4" if name.endswith(".mp4") else "image/png")
-    return FileResponse(base, media_type=media, headers={"Cache-Control": "public, max-age=3600"})
-
 @app.get("/v1/system/status")
 async def system_status():
     """Return safe, dashboard-friendly service health without exposing secrets."""
@@ -801,18 +759,6 @@ async def calendar_events(email: str, max_results: int = 10):
 
 # ==================== Local Tool / Device Layer ====================
 
-
-@app.get("/companion", include_in_schema=False)
-async def companion_ui():
-    return FileResponse(os.path.join(os.path.dirname(__file__), "companion.html"), media_type="text/html")
-
-@app.get("/companion-manifest.json", include_in_schema=False)
-async def companion_manifest():
-    return FileResponse(os.path.join(os.path.dirname(__file__), "companion-manifest.json"), media_type="application/manifest+json")
-
-@app.get("/companion-sw.js", include_in_schema=False)
-async def companion_sw():
-    return FileResponse(os.path.join(os.path.dirname(__file__), "companion-sw.js"), media_type="application/javascript")
 
 @app.get("/v1/tools/local")
 async def local_tools_inventory():
