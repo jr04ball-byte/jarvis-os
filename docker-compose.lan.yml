@@ -1,0 +1,7 @@
+services:
+  api-gateway:
+    ports:
+      - "8000:8000"
+    environment:
+      - AI_REQUIRE_AUTH=true
+      - AI_API_TOKEN=${AI_API_TOKEN:?Set AI_API_TOKEN in .env before enabling LAN access}

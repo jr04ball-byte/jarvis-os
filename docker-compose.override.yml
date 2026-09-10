@@ -1,0 +1,14 @@
+# LOCAL-ONLY OVERRIDE — not part of the reviewed build, do not commit.
+# This machine runs native Ollama (auto-respawns, owns 127.0.0.1:11434 and
+# holds the downloaded models), so the gateway AND the web UI talk to it
+# over the Docker host bridge instead of the (stopped) ollama container.
+# To use the containerized Ollama instead: stop the native Ollama app,
+# delete this file, then `docker-compose up -d` (models live in the
+# ollama_data volume, separate from the native app's storage).
+services:
+  api-gateway:
+    environment:
+      - OLLAMA_URL=http://host.docker.internal:11434
+  open-webui:
+    environment:
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434

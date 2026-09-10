@@ -1,0 +1,16 @@
+FROM qwen3.5:9b
+
+# Set reasonable generation limits
+PARAMETER num_predict 2048
+PARAMETER temperature 0.7
+PARAMETER top_p 0.9
+PARAMETER top_k 40
+PARAMETER repeat_penalty 1.1
+
+# Stop tokens to prevent runaway generation
+PARAMETER stop "<|start_header_id|>"
+PARAMETER stop "<|end_header_id|>"
+PARAMETER stop "<|eot_id|>"
+
+# System prompt for better responses
+SYSTEM """You are a helpful, concise AI assistant. Provide clear, accurate answers without unnecessary elaboration. Stop when you've fully answered the question."""

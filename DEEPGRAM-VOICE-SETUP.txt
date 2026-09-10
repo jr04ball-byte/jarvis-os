@@ -1,0 +1,27 @@
+AI SYSTEM v12 — DEEPGRAM VOICE
+
+What changed
+- Replaced browser-local Whisper voice path with Deepgram Flux realtime STT.
+- Added Deepgram Aura TTS through the AI gateway.
+- Ollama remains the AI brain and existing agent/tool router remains in control.
+- Deepgram API key stays server-side; browser receives only a short-lived token.
+- Connections Center now reports Deepgram Voice.
+- Voice page keeps conversational turn-taking and existing Sales/General profiles.
+
+Setup on Windows
+1. Copy this package over your existing C:\Users\jr04b\ai-system installation, or extract into a new folder and test first.
+2. Put a NEW Deepgram API key in .env. Do not commit it or put it in browser code.
+3. Easiest local setup: run SET-DEEPGRAM-KEY.bat and paste the new key when prompted.
+4. Start with START-LOCAL-TEST.bat.
+5. Open http://127.0.0.1:8000/dashboard
+6. Open Connections and Tools. Deepgram Voice should show Connected.
+7. Open the Voice page and press Talk.
+
+Voice architecture
+Browser microphone -> Deepgram Flux realtime STT -> AI Gateway -> Ollama + existing tools -> Deepgram Aura TTS -> browser speaker.
+
+Security
+The long-lived Deepgram API key is never sent to browser JavaScript. The gateway creates a short-lived Deepgram token for the realtime STT WebSocket and performs TTS server-side.
+
+Important
+The API key previously pasted into chat should be revoked/replaced before production use.

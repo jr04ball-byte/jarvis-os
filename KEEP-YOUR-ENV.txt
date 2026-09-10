@@ -1,0 +1,12 @@
+JARVIS V23 UPGRADE — KEEP YOUR LOCAL .env
+
+This release archive intentionally does not include a live .env, token key, OAuth token store, conversations database, orchestrator database, or Project Worker run database.
+
+When upgrading an existing Jarvis installation:
+1. Keep your current local .env in the Jarvis root.
+2. Extract/copy the V23 application files into the installation.
+3. Compare .env.example for new optional V23 settings; do not replace your .env with .env.example.
+4. Keep your existing runtime data directory if you want prior conversations/project state.
+5. Restart Jarvis and run TEST-JARVIS-V23.bat.
+
+If any API/OAuth secrets have ever been shared in an archive, message, screenshot, or public repository, rotate them after development/testing is complete.

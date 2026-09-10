@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Jarvis — Live Duplex Voice Console</title>
+<style>
+  body { margin:0; background:#04070c; color:#dfe9ff; font-family:'Consolas','Courier New',monospace; }
+  .wrap { max-width:520px; margin:0 auto; padding:18px; display:flex; flex-direction:column; gap:12px; min-height:100vh; }
+  .bar { display:flex; justify-content:space-between; align-items:center; border:1px solid #0f2a3a; background:#071120; border-radius:6px; padding:10px 12px; }
+  .tag { font-size:10px; letter-spacing:2px; color:#00ff66; }
+  #state { font-size:12px; color:#00e5ff; font-weight:bold; }
+  #model { font-size:10px; color:#7583a1; }
+  .meter { height:6px; background:#08131f; border-radius:4px; overflow:hidden; }
+  .meter i { display:block; height:100%; width:0; background:#36e39a; }
+  .stats { display:flex; justify-content:space-between; font-size:10px; color:#7583a1; }
+  #talk { height:58px; border:1px solid #00e5ff55; background:#08243a; color:#00e5ff; font:bold 16px/1 'Consolas',monospace; letter-spacing:2px; border-radius:6px; cursor:pointer; }
+  #talk.active { background:#00ff66; color:#000; box-shadow:0 0 24px #00ff6688; }
+  .row { display:flex; gap:8px; }
+  #text { flex:1; background:#08131f; border:1px solid #0f2a3a; color:#fff; border-radius:6px; padding:10px; font:inherit; }
+  #send { background:#08243a; border:1px solid #00e5ff55; color:#00e5ff; border-radius:6px; padding:10px 16px; cursor:pointer; font:inherit; }
+  #log { flex:1; overflow:auto; border:1px solid #0f2a3a; background:#060d16; border-radius:6px; padding:10px; min-height:220px; }
+  .msg { font-size:12px; line-height:1.5; padding:6px 0; border-bottom:1px solid #ffffff0d; white-space:pre-wrap; }
+  .msg.you { color:#8ec9ff; } .msg.ai { color:#c8ffe0; } .msg.sys { color:#ffb700; }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="bar">
+    <div><span class="tag">JARVIS // LIVE DUPLEX</span><div id="model">Gemini Live</div></div>
+    <div id="state">Ready</div>
+  </div>
+  <div class="meter"><i id="level"></i></div>
+  <div class="stats"><span id="rate">→ </span><span id="latency">— ms</span></div>
+  <button id="talk">START</button>
+  <div class="row">
+    <input id="text" placeholder="Type a command or tool trigger…">
+    <button id="send">SEND</button>
+  </div>
+  <div id="log"></div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+let active = false, ws = null, stream = null, ctxIn = null, processor = null, audioCtxOut = null;
+let token = null, model = '', wsUrl = '', inputRate = 16000, outputRate = 24000;
+let lastMicAt = 0, speaking = false, queue = Promise.resolve();
+const FLOAT_16 = 'audio/pcm;rate=';
+function jarvisApiToken() {
+  try {
+    return sessionStorage.getItem('jarvisApiToken') ||
+      (window.opener && window.opener.sessionStorage && window.opener.sessionStorage.getItem('jarvisApiToken')) || '';
+  } catch (_) { return ''; }
+}
+function apiHeaders(json = true) {
+  const h = {};
+  if (json) h['Content-Type'] = 'application/json';
+  const t = jarvisApiToken();
+  if (t) h['Authorization'] = 'Bearer ' + t;
+  return h;
+}
+
+function log(who, text) {
+  const d = document.createElement('div');
+  d.className = 'msg ' + (who === 'You' ? 'you' : who === 'Jarvis' ? 'ai' : 'sys');
+  d.textContent = (who === 'Jarvis' ? 'Jarvis' : who) + ': ' + text;
+  $('log').appendChild(d);
+  $('log').scrollTop = $('log').scrollHeight;
+}
+function setState(s) { $('state').textContent = s; }
+function fileBase64(bytes) {
+  let bin = ''; const CH = 0x8000;
+  for (let i = 0; i < bytes.length; i += CH) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CH));
+  return btoa(bin);
+}
+function pcm16(f32) {
+  const o = new Int16Array(f32.length);
+  for (let i = 0; i < f32.length; i++) {
+    const x = Math.max(-1, Math.min(1, f32[i]));
+    o[i] = x < 0 ? x * 32768 : x * 32767;
+  }
+  return o.buffer;
+}
+function f32FromBytes(bytes) {
+  const a = new Int16Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 2);
+  const o = new Float32Array(a.length);
+  for (let i = 0; i < a.length; i++) o[i] = a[i] / 32768;
+  return o;
+}
+function levelUpdate(f32) {
+  let s = 0;
+  for (let i = 0; i < f32.length; i++) s += f32[i] * f32[i];
+  const r = Math.sqrt(s / f32.length);
+  $('level').style.width = Math.min(100, r * 700) + '%';
+}
+
+async function getToken() {
+  const r = await fetch('/v1/gemini/live-token', {
+    method: 'POST',
+    headers: apiHeaders(true),
+    body: JSON.stringify({ ttl_minutes: 10 })
+  });
+  if (!r.ok) throw new Error((await r.json()).detail || ('token ' + r.status));
+  const j = await r.json();
+  token = j.token; model = j.model; wsUrl = j.ws_url; inputRate = j.input_rate; outputRate = j.output_rate;
+  $('model').textContent = 'Gemini Live • ' + model;
+}
+
+function playChunk(chunk) {
+  queue = queue.then(async () => {
+    if (!speaking) return;
+    const f32 = f32FromBytes(chunk);
+    if (!audioCtxOut) audioCtxOut = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: outputRate });
+    const buf = audioCtxOut.createBuffer(1, f32.length, audioCtxOut.sampleRate);
+    buf.copyToChannel(f32, 0);
+    const src = audioCtxOut.createBufferSource();
+    src.buffer = buf;
+    src.connect(audioCtxOut.destination);
+    src.start();
+    await new Promise(res => { src.onended = res; });
+  });
+}
+
+function stopPlayback() {
+  speaking = false;
+  queue = Promise.resolve();
+  if (audioCtxOut) { audioCtxOut.close(); audioCtxOut = null; }
+}
+
+function setupMsg() {
+  return {
+    setup: {
+      model: 'models/' + model,
+      generationConfig: {
+        responseModalities: ['AUDIO'],
+        speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } },
+        thinkingConfig: { thinkingLevel: 'minimal' }
+      },
+      inputAudioTranscription: {},
+      outputAudioTranscription: {},
+      systemInstruction: {
+        parts: [{
+          text: 'You are Jarvis, an elite executive operating system. Keep spoken replies concise and tactical. Respect Jarvis permissions and verification boundaries. You can control the 3D God Eye view and invoke the verified Project Worker for registered code projects. Never claim an action succeeded unless its tool result says it did.'
+        }]
+      },
+      tools: [{
+        functionDeclarations: [
+          {
+            name: 'fly_to_target',
+            description: 'Fly the 3D globe camera to a specific latitude, longitude, and altitude.',
+            parameters: {
+              type: 'OBJECT',
+              properties: {
+                lat: { type: 'NUMBER', description: 'Latitude coordinate' },
+                lon: { type: 'NUMBER', description: 'Longitude coordinate' },
+                alt: { type: 'NUMBER', description: 'Camera altitude in meters (default 25000)' }
+              },
+              required: ['lat', 'lon']
+            }
+          },
+          {
+            name: 'set_sensor_mode',
+            description: 'Change tactical HUD shader mode: DAY, NVG (night vision), FLIR (thermal infrared), or CRT (surveillance).',
+            parameters: {
+              type: 'OBJECT',
+              properties: {
+                mode: { type: 'STRING', enum: ['DAY', 'NVG', 'FLIR', 'CRT'] }
+              },
+              required: ['mode']
+            }
+          },
+          {
+            name: 'run_project_worker',
+            description: 'Run a bounded, verified Jarvis Project Worker coding task. OpenCode implements inside a registered project and Jarvis verifies the result.',
+            parameters: {
+              type: 'OBJECT',
+              properties: {
+                target: { type: 'STRING', enum: ['email_agent', 'ai_workforce', 'outbound_ai'], description: 'Registered Jarvis project target.' },
+                goal: { type: 'STRING', description: 'Detailed coding goal to implement and verify.' }
+              },
+              required: ['target', 'goal']
+            }
+          }
+        ]
+      }]
+    }
+  };
+}
+
+async function executeAction(name, args) {
+  log('System', `Executing: ${name}(${JSON.stringify(args)})`);
+
+  if (window.opener && window.opener.__jarvisGlobe) {
+    if (name === 'fly_to_target') return window.opener.__jarvisGlobe.flyTo(args.lat, args.lon, args.alt || 25000);
+    if (name === 'set_sensor_mode') return window.opener.__jarvisGlobe.setSensor(args.mode);
+  }
+
+  if (name === 'run_project_worker') {
+    try {
+      const res = await fetch('/v1/project-worker/autofix', {
+        method: 'POST',
+        headers: apiHeaders(true),
+        body: JSON.stringify({ target: args.target, goal: args.goal, max_retries: 2, run_lint: false })
+      });
+      const data = await res.json();
+      if (!res.ok) return { status: 'error', detail: data.detail || ('HTTP ' + res.status) };
+      return data;
+    } catch (e) {
+      return { status: 'error', detail: e.message };
+    }
+  }
+
+  return { status: 'ok', detail: 'Executed locally' };
+}
+
+async function connect() {
+  await getToken();
+  ws = new WebSocket(wsUrl + '?access_token=' + encodeURIComponent(token));
+  ws.binaryType = 'arraybuffer';
+  await new Promise((res, rej) => {
+    const z = setTimeout(() => rej(new Error('Live connect timeout')), 12000);
+    ws.onopen = () => { clearTimeout(z); res(); };
+    ws.onerror = () => { clearTimeout(z); rej(new Error('Live WebSocket failed')); };
+  });
+  ws.onmessage = e => handleServer(e);
+  ws.onclose = () => { if (active) { setState('LOST CONNECTION'); stop(); } };
+
+  // Gemini requires setupComplete before realtime audio/text is sent.
+  const setupReady = new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      ws.removeEventListener('message', onSetup);
+      reject(new Error('Gemini Live setup timeout'));
+    }, 10000);
+    function onSetup(event) {
+      try {
+        const msg = JSON.parse(typeof event.data === 'string' ? event.data : new TextDecoder().decode(event.data));
+        if (msg.setupComplete) {
+          clearTimeout(timeout);
+          ws.removeEventListener('message', onSetup);
+          resolve();
+        }
+      } catch (_) {}
+    }
+    ws.addEventListener('message', onSetup);
+  });
+  ws.send(JSON.stringify(setupMsg()));
+  await setupReady;
+}
+
+async function handleServer(e) {
+  let j;
+  try { j = JSON.parse(typeof e.data === 'string' ? e.data : new TextDecoder().decode(e.data)); } catch { return; }
+
+  if (j.interrupted) { stopPlayback(); setState('SPEAKING — interrupted'); return; }
+
+  if (j.toolCall) {
+    const responses = [];
+    for (const call of (j.toolCall.functionCalls || [])) {
+      const result = await executeAction(call.name, call.args);
+      responses.push({ response: { output: result }, id: call.id, name: call.name });
+    }
+    ws.send(JSON.stringify({ toolResponse: { functionResponses: responses } }));
+    return;
+  }
+
+  const sc = j.serverContent;
+  if (!sc) return;
+  if (sc.interimInputTranscription && sc.interimInputTranscription.text) {
+    setState('HEARING — ' + sc.interimInputTranscription.text.slice(-48));
+  }
+  if (sc.inputTranscription && sc.inputTranscription.text) {
+    log('You', sc.inputTranscription.text.trim());
+  }
+  if (sc.outputTranscription && sc.outputTranscription.text) {
+    log('Jarvis', sc.outputTranscription.text.trim());
+  }
+  if (sc.turnComplete) { setState('LISTENING — say something'); speaking = false; return; }
+
+  const turn = sc.modelTurn || sc.interruptedTurn;
+  if (!turn) return;
+
+  for (const p of (turn.parts || [])) {
+    if (p.inlineData) {
+      const mime = p.inlineData.mimeType || '';
+      const data = atob(p.inlineData.data || '');
+      const bytes = new Uint8Array(data.length);
+      for (let i = 0; i < data.length; i++) bytes[i] = data.charCodeAt(i);
+
+      if (mime.includes('pcm') || mime.includes('audio')) {
+        if (!speaking) { speaking = true; $('latency').textContent = (Date.now() - lastMicAt) + ' ms'; }
+        playChunk(bytes);
+      } else if (mime.startsWith('text')) {
+        try { const t = new TextDecoder().decode(bytes); if (t.trim()) log('Jarvis', t.trim()); } catch {}
+      }
+    } else if (p.text && typeof p.text === 'string') {
+      log('Jarvis', p.text);
+    }
+  }
+}
+
+async function micLoop() {
+  stream = await navigator.mediaDevices.getUserMedia({
+    audio: { channelCount: 1, sampleRate: inputRate, echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+  });
+  const AC = window.AudioContext || window.webkitAudioContext;
+  ctxIn = new AC({ sampleRate: inputRate });
+  await ctxIn.resume();
+  const src = ctxIn.createMediaStreamSource(stream);
+  processor = ctxIn.createScriptProcessor(4096, 1, 1);
+  const sink = ctxIn.createGain(); sink.gain.value = 0;
+  processor.onaudioprocess = e => {
+    const a = e.inputBuffer.getChannelData(0);
+    levelUpdate(a);
+    lastMicAt = Date.now();
+    if (ws && ws.readyState === 1) {
+      ws.send(JSON.stringify({
+        realtimeInput: { audio: { mimeType: FLOAT_16 + inputRate, data: fileBase64(new Uint8Array(pcm16(a))) } }
+      }));
+    }
+  };
+  src.connect(processor);
+  processor.connect(sink);
+  sink.connect(ctxIn.destination);
+}
+
+async function start() {
+  if (active) return;
+  active = true; speaking = false;
+  $('talk').classList.add('active'); $('talk').textContent = 'STOP';
+  setState('CONNECTING…');
+  try {
+    await connect();
+    setState('LISTENING — say something');
+    await micLoop();
+    $('rate').textContent = 'mic ' + inputRate + 'Hz → ';
+  } catch (err) {
+    active = false;
+    $('talk').classList.remove('active'); $('talk').textContent = 'START';
+    setState('ERROR — ' + err.message);
+    log('System', 'Start failed: ' + err.message);
+    stopMic();
+  }
+}
+
+function stopMic() {
+  try { processor && processor.disconnect(); ctxIn && ctxIn.close(); } catch {}
+  stream && stream.getTracks().forEach(t => t.stop());
+  stream = null; processor = null; ctxIn = null;
+}
+
+function stop() {
+  active = false; speaking = false;
+  stopPlayback(); stopMic();
+  try { ws && ws.close(); } catch {}
+  ws = null; token = null;
+  $('talk').classList.remove('active'); $('talk').textContent = 'START';
+  setState('Ready');
+}
+
+async function sendText() {
+  const t = $('text').value.trim();
+  if (!t || !ws || ws.readyState !== 1) return;
+  $('text').value = '';
+  log('You', t);
+  ws.send(JSON.stringify({ realtimeInput: { text: t } }));
+}
+
+$('talk').onclick = () => active ? stop() : start();
+$('send').onclick = sendText;
+$('text').onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendText(); } };
+</script>
+</body>
+</html>

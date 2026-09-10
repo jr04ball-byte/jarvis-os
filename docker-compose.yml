@@ -1,0 +1,70 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "127.0.0.1:11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    networks:
+      - ai-network
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    ports:
+      - "127.0.0.1:3000:8080"
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - WEBUI_SECRET_KEY=A3H-JgGv4XVOGAtVA2fPbhCxkS5o3zNwfzuRl5aEyfYFRFKO63QhPmzminA0Gtii
+    volumes:
+      - open-webui_data:/app/backend/data
+    depends_on:
+      - ollama
+    restart: unless-stopped
+    networks:
+      - ai-network
+
+  api-gateway:
+    build: ./api-gateway
+    container_name: ai-api-gateway
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      - OLLAMA_URL=http://ollama:11434
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI:-http://localhost:8000/auth/google/callback}
+      - TOKEN_ENCRYPTION_KEY=${TOKEN_ENCRYPTION_KEY:-}
+      - API_DATA_DIR=/app/data
+      - AI_ALLOWED_PATHS=${AI_ALLOWED_PATHS:-/host-files}
+      - HOME_ASSISTANT_URL=${HOME_ASSISTANT_URL:-}
+      - HOME_ASSISTANT_TOKEN=${HOME_ASSISTANT_TOKEN:-}
+      - AI_HOST_BRIDGE_URL=${AI_HOST_BRIDGE_URL:-http://host.docker.internal:8765}
+      - AI_HOST_BRIDGE_TOKEN=${AI_HOST_BRIDGE_TOKEN:-}
+    volumes:
+      - api_data:/app/data
+      - ${AI_HOST_FILES:-./host-files}:/host-files
+      - ./.env:/app/.env:ro
+    depends_on:
+      - ollama
+    restart: unless-stopped
+    networks:
+      - ai-network
+
+volumes:
+  ollama_data:
+  open-webui_data:
+  api_data:
+
+networks:
+  ai-network:
+    driver: bridge

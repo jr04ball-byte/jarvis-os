@@ -1,0 +1,85 @@
+services:
+  mongodb:
+    image: mongo:8.0
+    container_name: librechat-mongo
+    restart: always
+    volumes:
+      - librechat-mongo:/data/db
+    networks:
+      - librechat-net
+
+  vectordb:
+    image: pgvector/pgvector:0.8.0-pg15
+    container_name: librechat-vectordb
+    restart: always
+    environment:
+      - POSTGRES_DB=mydatabase
+      - POSTGRES_USER=myuser
+      - POSTGRES_PASSWORD=mypassword
+    volumes:
+      - librechat-pgdata:/var/lib/postgresql/data
+    networks:
+      - librechat-net
+
+  rag_api:
+    image: registry.librechat.ai/danny-avila/librechat-rag-api-dev:latest
+    container_name: librechat-rag-api
+    restart: always
+    depends_on:
+      - vectordb
+    environment:
+      - RAG_PORT=8000
+      - DB_HOST=vectordb
+      - DB_PORT=5432
+      - DB_NAME=mydatabase
+      - DB_USER=myuser
+      - DB_PASSWORD=mypassword
+      - EMBEDDINGS_PROVIDER=ollama
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - EMBEDDINGS_MODEL=nomic-embed-text
+      - RAG_OPENAI_API_KEY=none
+    networks:
+      - librechat-net
+      - ai-system_ai-network
+
+  librechat:
+    image: ghcr.io/danny-avila/librechat:latest
+    container_name: librechat
+    ports:
+      - "3080:3080"
+    restart: always
+    depends_on:
+      - mongodb
+      - rag_api
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/LibreChat
+      - HOST=0.0.0.0
+      - PORT=3080
+      - RAG_API_URL=http://rag_api:8000
+      - JWT_SECRET=594f0afbacffbe5e0d95f8d2e996b70e1008d428e834fa64cd68b70f47a7c0e9
+      - JWT_REFRESH_SECRET=bc0bdc34f0b6fcbda9fa84836afdcd08a4ac75be89045de17e97e22b960370b7
+      - CREDS_KEY=d314d55e3a235f437caff4add5ba2bf6e718e45fe312cc01f28b24d3ee3c7673
+      - CREDS_IV=3df0ee01dba0bf39ea430efee9923d35
+      - ALLOW_REGISTRATION=true
+      - DOMAIN_CLIENT=http://localhost:3080
+      - DOMAIN_SERVER=http://localhost:3080
+    volumes:
+      - librechat-uploads:/app/uploads
+      - librechat-logs:/app/logs
+      - type: bind
+        source: ./librechat.yaml
+        target: /app/librechat.yaml
+    networks:
+      - librechat-net
+      - ai-system_ai-network
+
+networks:
+  librechat-net:
+  ai-system_ai-network:
+    external: true
+
+volumes:
+  librechat-mongo:
+  librechat-uploads:
+  librechat-logs:
+  librechat-pgdata:

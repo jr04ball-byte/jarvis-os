@@ -1,0 +1,8 @@
+{
+  "name":"ai-system-desktop-companion",
+  "version":"14.0.0",
+  "private":true,
+  "main":"main.cjs",
+  "scripts":{"start":"electron ."},
+  "devDependencies":{"electron":"^42.5.1"}
+}

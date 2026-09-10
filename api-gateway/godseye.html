@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Jarvis — God's Eye Command View</title>
+<script src="https://cesium.com/downloads/cesiumjs/releases/1.114/Build/Cesium/Cesium.js"></script>
+<link href="https://cesium.com/downloads/cesiumjs/releases/1.114/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+<style>
+  :root {
+    --hud-green: #00ff66;
+    --hud-cyan: #00e5ff;
+    --hud-amber: #ffb700;
+    --hud-bg: rgba(6, 12, 24, 0.75);
+    --hud-border: rgba(0, 229, 255, 0.35);
+  }
+  * { box-sizing: border-box; }
+  body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: 'Consolas', 'Courier New', monospace; color: var(--hud-cyan); }
+  #cesiumContainer { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; }
+  .cesium-viewer-bottom, .cesium-viewer-toolbar { display: none !important; }
+
+  /* Tactical HUD Overlay */
+  .hud-layer { position: absolute; inset: 0; z-index: 5; pointer-events: none; }
+  .hud-panel { pointer-events: auto; background: var(--hud-bg); border: 1px solid var(--hud-border); backdrop-filter: blur(8px); padding: 14px; border-radius: 4px; box-shadow: 0 0 20px rgba(0,229,255,0.15); }
+
+  /* Top Bar */
+  .header-bar { position: absolute; top: 12px; left: 16px; right: 16px; display: flex; justify-content: space-between; align-items: center; }
+  .tag { font-size: 11px; letter-spacing: 2px; color: var(--hud-green); }
+  .readout { font-size: 13px; font-weight: bold; color: #fff; text-shadow: 0 0 8px var(--hud-cyan); }
+
+  /* Left Telemetry */
+  .telemetry-card { position: absolute; top: 75px; left: 16px; width: 260px; font-size: 11px; display: grid; gap: 8px; }
+  .stat-row { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 3px; }
+
+  /* Reticle Center */
+  .crosshair { position: absolute; top: 50%; left: 50%; width: 50px; height: 50px; transform: translate(-50%, -50%); border: 1px solid rgba(0,229,255,0.3); border-radius: 50%; }
+  .crosshair::before, .crosshair::after { content: ''; position: absolute; background: var(--hud-cyan); }
+  .crosshair::before { top: 24px; left: -10px; width: 70px; height: 1px; }
+  .crosshair::after { top: -10px; left: 24px; width: 1px; height: 70px; }
+
+  /* Sensor Selectors Bottom Bar */
+  .footer-bar { position: absolute; bottom: 16px; left: 16px; right: 16px; display: flex; justify-content: space-between; align-items: center; }
+  .btn { background: rgba(0, 229, 255, 0.1); border: 1px solid var(--hud-border); color: var(--hud-cyan); padding: 8px 14px; font-size: 11px; cursor: pointer; border-radius: 3px; transition: all .2s; }
+  .btn:hover, .btn.active { background: var(--hud-cyan); color: #000; box-shadow: 0 0 12px var(--hud-cyan); }
+  .btn-voice { background: rgba(0, 255, 102, 0.2); border-color: var(--hud-green); color: var(--hud-green); font-weight: bold; }
+  .btn-voice:hover { background: var(--hud-green); color: #000; box-shadow: 0 0 15px var(--hud-green); }
+</style>
+</head>
+<body>
+
+<div id="cesiumContainer"></div>
+
+<div class="hud-layer">
+  <!-- Top Navigation Ribbon -->
+  <div class="header-bar hud-panel">
+    <div><span class="tag">JARVIS // GOD'S EYE VIEW</span></div>
+    <div class="readout"><span id="posReadout">LAT: 40.7128° N | LON: 74.0060° W | ALT: 25.4 KM</span></div>
+    <div><span class="tag" id="utcClock">UTC --:--:--</span></div>
+  </div>
+
+  <!-- Telemetry & Sub-Agent Status -->
+  <div class="telemetry-card hud-panel">
+    <div style="font-weight:bold; color:var(--hud-green); margin-bottom:4px;">TACTICAL TELEMETRY</div>
+    <div class="stat-row"><span>AIRBORNE TRACKS:</span><span id="aircraftCount" style="color:#fff;">SCANNING...</span></div>
+    <div class="stat-row"><span>ACTIVE SENSOR:</span><span id="activeSensorLabel">DAYLIGHT</span></div>
+    <div class="stat-row"><span>OPENCODE GO:</span><span style="color:var(--hud-green);">READY (:4096)</span></div>
+    <div class="stat-row"><span>PRIMARY BRAIN:</span><span style="color:var(--hud-cyan);">GEMINI LIVE</span></div>
+    <div class="stat-row"><span>CLASSIC COCKPIT:</span><a href="/dashboard-classic" style="color:var(--hud-amber);">CHAT + APPROVALS</a></div>
+  </div>
+
+  <!-- Reticle -->
+  <div class="crosshair"></div>
+
+  <!-- Sensor Mode & Live Voice Quick-Launch -->
+  <div class="footer-bar hud-panel">
+    <div style="display:flex; gap:8px;">
+      <button class="btn active" onclick="setSensorMode('DAY')">OPTICAL [DAY]</button>
+      <button class="btn" onclick="setSensorMode('NVG')">NVG [GEN-3]</button>
+      <button class="btn" onclick="setSensorMode('FLIR')">FLIR [IRONBOW]</button>
+      <button class="btn" onclick="setSensorMode('CRT')">CRT [SURVEILLANCE]</button>
+    </div>
+    <div style="display:flex; gap:8px;">
+      <button class="btn" onclick="flyToCity('nyc')">NEW YORK</button>
+      <button class="btn" onclick="flyToCity('tokyo')">TOKYO</button>
+      <button class="btn" onclick="flyToCity('london')">LONDON</button>
+      <button class="btn btn-voice" onclick="openVoiceConsole()">LAUNCH LIVE DUPLEX MIC</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // 1. Initialize Cesium Globe
+  const viewer = new Cesium.Viewer('cesiumContainer', {
+    animation: false,
+    timeline: false,
+    geocoder: false,
+    baseLayerPicker: false,
+    sceneModePicker: false,
+    navigationHelpButton: false,
+    homeButton: false
+  });
+  viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString('#04101f');
+
+  viewer.camera.flyTo({
+    destination: Cesium.Cartesian3.fromDegrees(-74.0060, 40.7128, 35000.0),
+    duration: 2.5
+  });
+
+  // 2. Camera HUD Tracker
+  viewer.camera.changed.addEventListener(() => {
+    const c = viewer.camera.positionCartographic;
+    const lat = Cesium.Math.toDegrees(c.latitude).toFixed(4);
+    const lon = Cesium.Math.toDegrees(c.longitude).toFixed(4);
+    const alt = (c.height / 1000).toFixed(1);
+    document.getElementById('posReadout').textContent = `LAT: ${lat}° | LON: ${lon}° | ALT: ${alt} KM`;
+  });
+
+  // 3. Live Aircraft Telemetry (ADS-B via adsb.lol)
+  async function updateAirborneTracks() {
+    try {
+      const c = viewer.camera.positionCartographic;
+      const lat = Cesium.Math.toDegrees(c.latitude);
+      const lon = Cesium.Math.toDegrees(c.longitude);
+      const res = await fetch(`https://api.adsb.lol/v2/lat/${lat.toFixed(2)}/lon/${lon.toFixed(2)}/dist/150`);
+      const data = await res.json();
+      const planes = (data.ac || []).slice(0, 75);
+
+      document.getElementById('aircraftCount').textContent = `${planes.length} DETECTED`;
+      viewer.entities.removeAll();
+
+      planes.forEach(ac => {
+        if (!ac.lat || !ac.lon) return;
+        viewer.entities.add({
+          position: Cesium.Cartesian3.fromDegrees(ac.lon, ac.lat, (ac.alt_baro || 10000) * 0.3048),
+          point: { pixelSize: 4, color: Cesium.Color.fromCssColorString('#00ff66') },
+          label: {
+            text: ac.flight ? ac.flight.trim() : (ac.hex || 'TRK'),
+            font: '9px monospace',
+            fillColor: Cesium.Color.fromCssColorString('#00e5ff'),
+            pixelOffset: new Cesium.Cartesian2(0, -10)
+          }
+        });
+      });
+    } catch (e) {
+      document.getElementById('aircraftCount').textContent = 'STANDBY';
+    }
+  }
+  setInterval(updateAirborneTracks, 15000);
+
+  // 4. Custom Sensor Shaders (Post-Process Stages)
+  let activeSensorStage = null;
+
+  const shaders = {
+    NVG: `
+      uniform sampler2D colorTexture;
+      varying vec2 v_textureCoordinates;
+      void main() {
+        vec4 color = texture2D(colorTexture, v_textureCoordinates);
+        float lum = dot(color.rgb, vec3(0.299, 0.587, 0.114));
+        gl_FragColor = vec4(0.0, lum * 1.6, lum * 0.2, 1.0);
+      }
+    `,
+    FLIR: `
+      uniform sampler2D colorTexture;
+      varying vec2 v_textureCoordinates;
+      void main() {
+        vec4 color = texture2D(colorTexture, v_textureCoordinates);
+        float lum = dot(color.rgb, vec3(0.299, 0.587, 0.114));
+        vec3 heat = vec3(smoothstep(0.4, 0.9, lum), smoothstep(0.1, 0.6, lum), smoothstep(0.7, 1.0, lum));
+        gl_FragColor = vec4(heat, 1.0);
+      }
+    `,
+    CRT: `
+      uniform sampler2D colorTexture;
+      varying vec2 v_textureCoordinates;
+      void main() {
+        vec2 uv = v_textureCoordinates;
+        vec4 color = texture2D(colorTexture, uv);
+        float scanline = sin(uv.y * 700.0) * 0.12;
+        gl_FragColor = color - scanline;
+      }
+    `
+  };
+
+  function setSensorMode(mode) {
+    if (activeSensorStage) {
+      viewer.scene.postProcessStages.remove(activeSensorStage);
+      activeSensorStage = null;
+    }
+    document.querySelectorAll('.footer-bar .btn').forEach(b => b.classList.remove('active'));
+
+    if (mode !== 'DAY' && shaders[mode]) {
+      activeSensorStage = new Cesium.PostProcessStage({ fragmentShader: shaders[mode] });
+      viewer.scene.postProcessStages.add(activeSensorStage);
+    }
+    document.getElementById('activeSensorLabel').textContent = mode;
+    return { status: 'ok', sensor: mode };
+  }
+
+  function flyToCity(city) {
+    const locs = {
+      nyc: { lon: -74.0060, lat: 40.7128, alt: 35000 },
+      tokyo: { lon: 139.6917, lat: 35.6895, alt: 35000 },
+      london: { lon: -0.1276, lat: 51.5074, alt: 35000 }
+    };
+    const t = locs[city] || locs.nyc;
+    viewer.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(t.lon, t.lat, t.alt), duration: 3.0 });
+  }
+
+  // 5. Global Action Bus for Gemini Voice Control
+  window.__jarvisGlobe = {
+    flyTo: (lat, lon, alt) => {
+      viewer.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(lon, lat, alt || 30000), duration: 2.5 });
+      return { status: 'ok', target: { lat, lon, alt } };
+    },
+    setSensor: (mode) => setSensorMode(mode)
+  };
+
+  // Clock
+  setInterval(() => {
+    document.getElementById('utcClock').textContent = 'UTC ' + new Date().toUTCString().split(' ')[4];
+  }, 1000);
+
+  function openVoiceConsole() {
+    window.open('/voice-live.html', 'JarvisVoiceConsole', 'width=520,height=720');
+  }
+</script>
+</body>
+</html>

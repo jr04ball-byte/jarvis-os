@@ -1,0 +1,19 @@
+AI SYSTEM v9 - LOCAL TEST
+
+1. Make sure Ollama is running on Windows.
+2. Extract this folder somewhere permanent, e.g. C:\AI-System.
+3. Double-click START-LOCAL-TEST.bat.
+4. The script creates a local Python environment, installs the gateway dependencies, starts the API without Docker, and opens the dashboard.
+5. Test the dashboard first.
+6. Open the Voice page and allow microphone access.
+7. Click Talk ONCE. Speak. Pause. The system should transcribe, respond, complete an allowed command, and return to listening automatically.
+8. Keep the API terminal window open while testing.
+9. Run STOP-LOCAL-TEST.bat when finished.
+
+URLs:
+Dashboard: http://127.0.0.1:8000/dashboard
+Voice:     http://127.0.0.1:8000/voice
+API Docs:  http://127.0.0.1:8000/docs
+Ollama:    http://127.0.0.1:11434
+
+If voice is slow, send the exact timing/error and we can move transcription to a native local Whisper service so the browser is no longer responsible for speech recognition.

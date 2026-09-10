@@ -1,0 +1,27 @@
+{
+  "name": "ai-system",
+  "version": "1.0.0",
+  "description": "Self-hosted AI system with LLMs and image generation",
+  "main": "client.py",
+  "scripts": {
+    "install": "bash install.sh",
+    "start": "docker-compose up -d",
+    "stop": "docker-compose stop",
+    "restart": "docker-compose restart",
+    "logs": "docker-compose logs -f",
+    "down": "docker-compose down",
+    "pull-model": "docker exec -it ollama ollama pull",
+    "health": "curl http://localhost:8000/health",
+    "stats": "curl http://localhost:8000/stats"
+  },
+  "keywords": [
+    "ai",
+    "llm",
+    "ollama",
+    "stable-diffusion",
+    "self-hosted",
+    "local-ai"
+  ],
+  "author": "Self-Hosted AI System",
+  "license": "MIT"
+}
