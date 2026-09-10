@@ -41,26 +41,18 @@ from model_lab import lmstudio_inventory as model_lab_lmstudio
 from model_lab import ollama_inventory as model_lab_ollama
 from model_lab import overview as model_lab_overview
 from schemas import (
-    AgentChatRequest,
     ArtifactPatch,
     ArtifactRequest,
     ChatMessage,
-    ConfirmationRequest,
     ConnectionUpdate,
     ConversationCreate,
     ConversationMessage,
     DocumentUpload,
-    OpenCodeTaskRequest,
     OrchestratorAutopilotRequest,
     OrchestratorGoal,
     OrchestratorRunRequest,
     OrchestratorTransition,
     ProjectWorkerAutofixRequest,
-    ProjectWorkerImplementRequest,
-    ProjectWorkerTargetRequest,
-    ProjectWorkerVerifyRequest,
-    ResearchRequest,
-    ToolRequest,
 )
 from services import (
     _PENDING_ACTIONS,
@@ -73,10 +65,8 @@ from services import (
     _cached_target_health,
     _configuration_snapshot,
     _connection_snapshot,
-    _consume_confirmation,
     _load_connection_overrides,
     _pending_snapshot,
-    _project_worker_target,
     _run_agent_loop,
     _run_project_autofix_cycle,
     _save_connection_overrides,
@@ -84,9 +74,7 @@ from services import (
     apply_system_prompt,
     build_tools_list,
     create_artifact,
-    execute_tool_core,
     select_agent_model,
-    web_search,
 )
 
 # Re-exported for backward compatibility (V24 P1: implementations live in store.py).
@@ -104,20 +92,12 @@ except ImportError:
     pass
 
 import google_oauth  # Google OAuth2 flow (Gmail + Calendar)
-import local_tools
-from brains import providers as intelligence_providers
 from brains import router as brain_router
 from brains import status as brain_status_snapshot
-from project_worker import capture_git_diff as project_capture_diff
 from project_worker import inspect_workspace as project_inspect_workspace
-from project_worker import make_worker_prompt
-from project_worker import project_health as project_worker_health_snapshot
 from project_worker import verify_workspace as project_verify_workspace
-from providers import ProviderMessage
-from routes import chat, dashboard, health, voice
+from routes import chat, dashboard, health, voice, workers
 from security import policy_snapshot as security_policy_snapshot
-from workspace_registry import get_target as workspace_target
-from workspace_registry import is_registered_workspace, target_for_workspace
 from workspace_registry import snapshot as workspace_snapshot
 
 import tools
@@ -157,6 +137,7 @@ app.add_middleware(
 )
 
 app.include_router(brain_router)
+app.include_router(workers.router)
 app.include_router(chat.router)
 app.include_router(voice.router)
 app.include_router(dashboard.router)
@@ -233,59 +214,6 @@ async def test_connection(connection_id: str):
 # ==================== OpenCode Go Sub-Agent Relay ====================
 
 
-@app.post("/v1/opencode/task")
-@limiter.limit("10/minute")
-async def run_opencode_task(request: Request, body: OpenCodeTaskRequest):
-    """Read-only OpenCode relay scoped to an exact registered workspace.
-
-    V23 deliberately removes direct unverified code-writing from this legacy
-    endpoint. Code changes must flow through Project Worker/Autopilot so they
-    receive baseline capture, verification, retry bounds, and audit evidence.
-    """
-    if body.mode != "inspect":
-        raise HTTPException(409, "direct OpenCode writes are disabled; use /v1/project-worker/autofix or Autopilot")
-
-    workspace = ""
-    resolved_target = (body.target or "").strip()
-    if resolved_target:
-        try:
-            target = workspace_target(resolved_target)
-        except KeyError:
-            raise HTTPException(404, "unknown OpenCode target")
-        workspace = (target.get("workspace") or {}).get("tool_path") or (target.get("workspace") or {}).get("path") or ""
-    elif body.path:
-        workspace = str(body.path).strip()
-        resolved_target = target_for_workspace(workspace) or ""
-    if not workspace or not is_registered_workspace(workspace):
-        raise HTTPException(403, "OpenCode may only inspect an exact workspace registered with Jarvis")
-
-    worker = intelligence_providers.get("opencode")
-    if worker is None or not worker.configured:
-        raise HTTPException(503, "OpenCode worker is not configured")
-    try:
-        result = await worker.complete(
-            [ProviderMessage(role="user", content=body.prompt)],
-            temperature=0.1, max_tokens=4096,
-            task_context={
-                "workspace": workspace,
-                "permission": "read_only",
-                "target": resolved_target or None,
-                "mode": "inspect",
-            },
-        )
-    except Exception as exc:
-        logger.exception("read-only OpenCode task failed")
-        raise HTTPException(502, f"OpenCode worker failed: {exc}")
-    return {
-        "status": "ok",
-        "mode": "inspect",
-        "target": resolved_target or None,
-        "provider": result.provider,
-        "model": result.model,
-        "content": result.content,
-        "metadata": result.metadata,
-    }
-
 # ==================== Deepgram Voice ====================
 
 
@@ -321,10 +249,6 @@ async def artifact_delete(artifact_id: str):
     if not path.exists(): raise HTTPException(404,"artifact not found")
     path.unlink(); return {"ok":True,"id":artifact_id}
 
-
-@app.post("/v1/research/search")
-async def research_search(body: ResearchRequest):
-    return await web_search(body.query, body.num_results)
 
 # ==================== Endpoints ====================
 
@@ -368,16 +292,6 @@ async def system_status():
         now = time.time()
         out["pending_count"] = sum(1 for v in _PENDING_ACTIONS.values() if now - v["created_at"] <= _PENDING_TTL_SECONDS)
     return out
-
-@app.get("/v1/agent/pending")
-async def agent_pending():
-    """List redacted pending approvals for the dashboard; arguments are never returned."""
-    now = time.time()
-    with _PENDING_LOCK:
-        expired = [k for k,v in _PENDING_ACTIONS.items() if now - v["created_at"] > _PENDING_TTL_SECONDS]
-        for k in expired:
-            _PENDING_ACTIONS.pop(k, None)
-        return {"items": [{"confirmation_id": k, "action": v["tool"], "reason": v["reason"], "created_at": v["created_at"], "expires_at": v["created_at"] + _PENDING_TTL_SECONDS} for k,v in _PENDING_ACTIONS.items()]}
 
 
 @app.get("/v1/command-center/overview")
@@ -532,19 +446,6 @@ async def calendar_events(email: str, max_results: int = 10):
 # ==================== Local Tool / Device Layer ====================
 
 
-@app.get("/v1/tools/local")
-async def local_tools_inventory():
-    """Discover local applications without granting arbitrary process execution."""
-    return local_tools.scan_local_tools()
-
-@app.get("/v1/tools")
-async def list_tools():
-    return {"tools": build_tools_list()}
-
-@app.post("/v1/tools/execute")
-async def execute_tool(req: ToolRequest):
-    return await execute_tool_core(req.tool, req.arguments, req.confirmed)
-
 @app.get("/v1/models")
 async def list_models():
     async with httpx.AsyncClient(timeout=10.0) as client:
@@ -628,95 +529,6 @@ async def orchestrator_policy():
 async def orchestrator_targets():
     """Return configured project workspaces without exposing credentials."""
     return {"targets": workspace_snapshot()}
-
-
-@app.post("/v1/project-worker/inspect")
-@limiter.limit("20/minute")
-async def project_worker_inspect(request: Request, body: ProjectWorkerTargetRequest):
-    target = _project_worker_target(body.target)
-    try:
-        evidence = await asyncio.to_thread(project_inspect_workspace, target["resolved_workspace"])
-    except FileNotFoundError as exc:
-        raise HTTPException(409, str(exc))
-    return {"target": target["target"], "workspace": target["workspace"], "evidence": evidence}
-
-
-@app.post("/v1/project-worker/health")
-@limiter.limit("20/minute")
-async def project_worker_health(request: Request, body: ProjectWorkerTargetRequest):
-    target = _project_worker_target(body.target)
-    try:
-        health = await asyncio.to_thread(project_worker_health_snapshot, target["resolved_workspace"])
-    except FileNotFoundError as exc:
-        raise HTTPException(409, str(exc))
-    return {"target": target["target"], "workspace": target["workspace"], "health": health}
-
-
-@app.post("/v1/project-worker/verify")
-@limiter.limit("10/minute")
-async def project_worker_verify(request: Request, body: ProjectWorkerVerifyRequest):
-    target = _project_worker_target(body.target)
-    try:
-        result = await asyncio.to_thread(
-            project_verify_workspace, target["resolved_workspace"],
-            run_tests=body.run_tests, run_build=body.run_build, run_lint=body.run_lint
-        )
-    except FileNotFoundError as exc:
-        raise HTTPException(409, str(exc))
-    return {"target": target["target"], "workspace": target["workspace"], "verification": result}
-
-
-@app.post("/v1/project-worker/implement")
-@limiter.limit("5/minute")
-async def project_worker_implement(request: Request, body: ProjectWorkerImplementRequest):
-    """Run one bounded OpenCode implementation cycle inside a registered workspace."""
-    target = _project_worker_target(body.target)
-    workspace = target["resolved_workspace"]
-    try:
-        before = await asyncio.to_thread(project_inspect_workspace, workspace)
-    except FileNotFoundError as exc:
-        raise HTTPException(409, str(exc))
-
-    worker = intelligence_providers.get("opencode")
-    if worker is None or not worker.configured:
-        raise HTTPException(503, "OpenCode worker is not configured")
-    prompt = make_worker_prompt(body.goal, workspace, before, permission="workspace_write")
-    started = time.time()
-    try:
-        result = await worker.complete(
-            [ProviderMessage(role="user", content=prompt)],
-            temperature=0.2, max_tokens=4096,
-            task_context={"workspace": workspace, "permission": "workspace_write", "goal": body.goal},
-        )
-    except Exception as exc:
-        logger.exception("project worker implementation failed")
-        raise HTTPException(502, f"OpenCode worker failed: {exc}")
-    elapsed_ms = int((time.time() - started) * 1000)
-    diff = await asyncio.to_thread(project_capture_diff, workspace)
-    verification = None
-    if body.verify:
-        verification = await asyncio.to_thread(project_verify_workspace, workspace, run_tests=True, run_build=True, run_lint=False)
-    return {
-        "target": target["target"], "workspace": target["workspace"], "goal": body.goal,
-        "worker": {"provider": result.provider, "model": result.model, "content": result.content, "metadata": result.metadata},
-        "diff": diff, "verification": verification, "elapsed_ms": elapsed_ms,
-        "status": "verified" if verification and verification.get("ok") else ("implemented_unverified" if not body.verify else "needs_attention"),
-    }
-
-
-@app.get("/v1/project-worker/runs/{run_id}")
-async def project_worker_run(run_id: str):
-    try:
-        return project_worker_runs.get(run_id)
-    except KeyError:
-        raise HTTPException(404, "project-worker run not found")
-
-
-@app.post("/v1/project-worker/autofix")
-@limiter.limit("3/minute")
-async def project_worker_autofix(request: Request, body: ProjectWorkerAutofixRequest):
-    """Bounded diagnose -> implement -> verify -> repair loop with durable run state."""
-    return await _run_project_autofix_cycle(body)
 
 
 # legacy implementation body removed by V22.2 refactor marker
@@ -833,25 +645,6 @@ async def get_performance():
     """Get performance statistics"""
     return monitor.get_stats()
 
-@app.get("/v1/computer/capabilities")
-async def computer_capabilities_route():
-    return await tools.computer_capabilities()
-
-@app.get("/v1/computer/screenshot")
-async def computer_screenshot_route():
-    return await tools.computer_screenshot()
-
-@app.get("/v1/computer/processes")
-async def computer_processes_route():
-    return await tools.computer_processes()
-
-@app.get("/v1/computer/windows")
-async def computer_windows_route():
-    return await tools.computer_windows()
-
-@app.get("/v1/computer/observe")
-async def computer_observe_route():
-    return await tools.computer_observe()
 
 @app.get("/stats")
 async def get_stats():
@@ -878,20 +671,6 @@ async def get_stats():
         return stats
 
 # ==================== Agentic Tool Calling ====================
-
-
-@app.post("/v1/agent/chat")
-@limiter.limit("20/minute")
-async def agent_chat(request: Request, body: AgentChatRequest):
-    """Multi-step local agent. Read-only tools run immediately; sensitive actions pause for approval."""
-    if body.assistant_profile.lower() not in {"general", "sales"}:
-        raise HTTPException(400, "assistant_profile must be 'general' or 'sales'")
-    if any(m.role == "system" for m in body.messages):
-        raise HTTPException(400, "system messages are not accepted by the agent endpoint")
-    messages = [m.model_dump() for m in apply_system_prompt(list(body.messages), body.assistant_profile)]
-    selected_model = select_agent_model(body.model, messages, body.assistant_profile)
-    return await _run_agent_loop(selected_model, messages, body.assistant_profile,
-                                 body.conversation_id, body.max_tool_rounds)
 
 
 @app.post("/v1/orchestrator/execute")
@@ -1044,40 +823,6 @@ async def orchestrator_autopilot(request: Request, body: OrchestratorAutopilotRe
 
 
 # ==================== Adaptive Voice Turn ====================
-
-
-@app.post("/v1/agent/confirm")
-@limiter.limit("30/minute")
-async def agent_confirm(request: Request, body: ConfirmationRequest):
-    """Approve one exact pending action and resume its original multi-step task."""
-    if not body.confirmed:
-        with _PENDING_LOCK:
-            _PENDING_ACTIONS.pop(body.confirmation_id, None)
-        return {"status": "cancelled"}
-
-    item = _consume_confirmation(body.confirmation_id)
-    result = await execute_tool(ToolRequest(tool=item["tool"], arguments=item["arguments"], confirmed=True))
-    resume = item.get("resume")
-    if not resume:
-        return result
-
-    messages = list(resume["messages"])
-    messages.append({"role": "tool", "content": json.dumps(result, default=str)})
-    # Resume from the exact point at which approval interrupted the task.
-    resumed_result = await _run_agent_loop(
-        resume["model"], messages, resume["assistant_profile"],
-        resume.get("conversation_id"), resume["max_tool_rounds"],
-        initial_tool_result=None,
-    )
-    project_id = resume.get("project_id")
-    task_id = resume.get("task_id")
-    if project_id and task_id:
-        if resumed_result.get("confirmation"):
-            orchestrator.transition(task_id, "awaiting_approval", result=resumed_result)
-        else:
-            orchestrator.transition(task_id, "completed", result=resumed_result)
-        resumed_result["project"] = orchestrator.get_project(project_id)
-    return resumed_result
 
 
 if __name__ == "__main__":
