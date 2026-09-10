@@ -31,6 +31,7 @@ def test_store_persists_capability_metadata_and_resumes_dependencies():
         assert store.next_task(project["id"])["kind"] == "reason"
         store.transition(project["tasks"][0]["id"], "completed", {"ok": True})
         assert store.next_task(project["id"])["kind"] == "inspect"
+        store.close()
 
 def test_project_target_survives_store_round_trip():
     with tempfile.TemporaryDirectory() as d:
@@ -39,3 +40,4 @@ def test_project_target_survives_store_round_trip():
         loaded = store.get_project(project["id"])
         assert loaded["plan"]["target"]["target"] == "email_agent"
         assert loaded["plan"]["target"]["workspace"]["label"] == "Email Agent"
+        store.close()

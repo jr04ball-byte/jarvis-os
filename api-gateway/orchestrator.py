@@ -11,6 +11,7 @@ import re
 import sqlite3
 import threading
 import uuid
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -74,8 +75,28 @@ class OrchestratorStore:
         c.row_factory = sqlite3.Row
         return c
 
+    @contextmanager
+    def _db(self):
+        c = self._connect()
+        try:
+            yield c
+            c.commit()
+        finally:
+            c.close()
+
+    def close(self):
+        """Release any lingering SQLite handles.
+
+        Connections are opened per-operation and closed immediately, but
+        unfinalized cursors can keep the db file locked on Windows until
+        cyclic GC runs. Call before deleting the db file (e.g. temp-dir
+        cleanup in tests).
+        """
+        import gc
+        gc.collect()
+
     def _init(self):
-        with self._connect() as c:
+        with self._db() as c:
             c.executescript("""
             CREATE TABLE IF NOT EXISTS jarvis_projects (
                 id TEXT PRIMARY KEY, goal TEXT NOT NULL, plan_json TEXT NOT NULL,
@@ -96,7 +117,7 @@ class OrchestratorStore:
             
             CREATE INDEX IF NOT EXISTS idx_jarvis_audit_project ON jarvis_audit(project_id, id);
             """)
-        with self._connect() as c:
+        with self._db() as c:
             cols = {r[1] for r in c.execute("PRAGMA table_info(jarvis_tasks)").fetchall()}
             if "capability" not in cols:
                 c.execute("ALTER TABLE jarvis_tasks ADD COLUMN capability TEXT NOT NULL DEFAULT 'generic'")
@@ -132,7 +153,7 @@ class OrchestratorStore:
         return d
 
     def get_project(self, project_id: str) -> dict[str, Any]:
-        with self._connect() as c:
+        with self._db() as c:
             p = c.execute("SELECT * FROM jarvis_projects WHERE id=?", (project_id,)).fetchone()
             if not p: raise KeyError(project_id)
             tasks = [self._task_dict(x) for x in c.execute("SELECT * FROM jarvis_tasks WHERE project_id=? ORDER BY position", (project_id,)).fetchall()]
@@ -140,7 +161,7 @@ class OrchestratorStore:
                     "created_at": p["created_at"], "updated_at": p["updated_at"]}
 
     def next_task(self, project_id: str) -> dict[str, Any] | None:
-        with self._connect() as c:
+        with self._db() as c:
             rows = c.execute("SELECT * FROM jarvis_tasks WHERE project_id=? ORDER BY position", (project_id,)).fetchall()
             for r in rows:
                 if r["status"] != "pending" and r["status"] != "ready": continue
@@ -172,7 +193,7 @@ class OrchestratorStore:
     def list_projects(self, limit: int = 20) -> list[dict[str, Any]]:
         """Dashboard-safe recent project summaries with task status counts."""
         cap = max(1, min(int(limit), 100))
-        with self._connect() as c:
+        with self._db() as c:
             rows = c.execute(
                 "SELECT * FROM jarvis_projects ORDER BY updated_at DESC LIMIT ?", (cap,)
             ).fetchall()
@@ -189,6 +210,6 @@ class OrchestratorStore:
             return out
 
     def audit(self, project_id: str, limit: int = 100):
-        with self._connect() as c:
+        with self._db() as c:
             rows = c.execute("SELECT * FROM jarvis_audit WHERE project_id=? ORDER BY id DESC LIMIT ?", (project_id, max(1, min(limit, 500)))).fetchall()
             return [dict(x) for x in rows]
