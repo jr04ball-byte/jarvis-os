@@ -356,7 +356,7 @@ class ConversationDB:
 
     def __init__(self, db_path=None):
         self.db_path = db_path or os.path.join(
-            os.getenv("API_DATA_DIR", "/app/data"), "conversations.db"
+            os.getenv("API_DATA_DIR", str(Path(__file__).resolve().parent / "data")), "conversations.db"
         )
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
         self._lock = threading.Lock()
@@ -459,8 +459,9 @@ class DocumentRAG:
 
     def __init__(self, db_path=None):
         self.db_path = db_path or os.path.join(
-            os.getenv("API_DATA_DIR", "/app/data"), "conversations.db"
+            os.getenv("API_DATA_DIR", str(Path(__file__).resolve().parent / "data")), "conversations.db"
         )
+        os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
         self._lock = threading.Lock()
         self.documents = {}
         self.vectorizer = TfidfVectorizer(stop_words='english', max_features=10000)
@@ -598,7 +599,7 @@ async def log_requests(request: Request, call_next):
 
 # ==================== Connection Registry ====================
 
-CONNECTIONS_PATH = Path(os.getenv("API_DATA_DIR", "/app/data")) / "connections.json"
+CONNECTIONS_PATH = Path(os.getenv("API_DATA_DIR", str(Path(__file__).resolve().parent / "data"))) / "connections.json"
 _CONNECTIONS_LOCK = threading.Lock()
 
 CONNECTION_CATALOG = [
