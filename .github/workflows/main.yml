@@ -18,5 +18,7 @@ jobs:
           pip install -r api-gateway/requirements.txt pytest ruff
       - name: Lint gate (F401, I001, UP006, UP045)
         run: python -m ruff check --select F401,I001,UP006,UP045 api-gateway tests tools
+      - name: Lint gate (no silent swallows in verified code)
+        run: python -m ruff check --select S110 api-gateway tests
       - name: Run tests
         run: pytest -q

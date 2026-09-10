@@ -3,6 +3,7 @@ from __future__ import annotations
 import builtins
 import hashlib
 import json
+import logging
 import os
 import re
 import shutil
@@ -14,6 +15,8 @@ from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Iterable
+
+logger = logging.getLogger(__name__)
 
 SENSITIVE_NAMES = {'.env', '.env.local', '.env.production', '.env.development', 'id_rsa', 'id_ed25519'}
 SENSITIVE_SUFFIXES = {'.pem', '.p12', '.pfx', '.key'}
@@ -248,8 +251,8 @@ def discover_commands(root: Path) -> dict[str, list[list[str]]]:
                 builds.append([runner, 'run', 'build'] if runner == 'npm' else [runner, 'build'])
             if 'lint' in scripts:
                 lint.append([runner, 'run', 'lint'] if runner == 'npm' else [runner, 'lint'])
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("package.json inspection failed for %s: %s", root, exc)
 
     if (root / 'pytest.ini').exists() or (root / 'pyproject.toml').exists() or any(root.glob('test*.py')) or (root / 'tests').is_dir():
         tests.append(['python', '-m', 'pytest', '-q'])

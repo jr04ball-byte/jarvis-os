@@ -704,7 +704,7 @@ async def _connection_snapshot() -> dict:
             if ollama_online:
                 models=r.json().get("models") or []
                 ollama_model=models[0].get("name") if models else None
-    except Exception: pass
+    except Exception as exc: logger.debug("ollama status probe failed: %s", exc)
     local["ollama_online"]=ollama_online; local["ollama_model"]=ollama_model
     gstore=google_oauth.TokenStore(); ga=[]
     for email in gstore.list_accounts():
@@ -1049,7 +1049,7 @@ async def artifacts_list(limit: int = 30):
     items=[]
     for path in sorted(ARTIFACTS_DIR.glob("*.json"), key=lambda x:x.stat().st_mtime, reverse=True)[:max(1,min(limit,100))]:
         try: items.append(json.loads(path.read_text(encoding="utf-8")))
-        except Exception: pass
+        except Exception as exc: logger.debug("skipping unreadable artifact %s: %s", path, exc)
     return {"items":items}
 
 @app.post("/v1/artifacts")
@@ -1210,8 +1210,8 @@ async def system_status():
         out["ollama"]["status"] = "unreachable"
     try:
         out["tools_count"] = len((await list_tools()).get("tools", []))
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("tools_count probe failed: %s", exc)
     if tools.HA_URL and tools.HA_TOKEN:
         try:
             await tools.ha_states()

@@ -5,7 +5,7 @@ import re
 import time
 from collections import Counter, deque
 from dataclasses import asdict, dataclass
-from typing import Any, Iterable
+from typing import Any, ClassVar, Iterable
 
 from providers import ProviderAdapter
 
@@ -152,7 +152,7 @@ class IntelligenceRouter:
         re.I,
     )
 
-    MODES = {"auto", "fast", "normal", "deep", "private", "coding", "autopilot"}
+    MODES: ClassVar[set[str]] = {"auto", "fast", "normal", "deep", "private", "coding", "autopilot"}
 
     def __init__(self, providers: dict[str, ProviderAdapter]) -> None:
         self.providers = providers

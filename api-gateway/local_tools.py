@@ -5,6 +5,7 @@ installed applications and the capabilities that the AI System can use once a
 corresponding plugin is enabled.
 """
 import json
+import logging
 import os
 import platform
 import re
@@ -13,6 +14,8 @@ import subprocess
 import time
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 ROOT = Path(os.getenv("AI_SYSTEM_ROOT", Path(__file__).resolve().parents[1]))
 
@@ -69,8 +72,8 @@ def _ue_version_from_build_file(executable: Path) -> str | None:
         m = re.search(r"UE_(\d+\.\d+)", str(executable))
         if m:
             return m.group(1)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("UE version detection failed for %s: %s", executable, exc)
     return None
 
 
