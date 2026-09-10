@@ -3,12 +3,13 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
+import shutil
 import sqlite3
 import subprocess
-import shutil
-import re
 import time
 import uuid
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
@@ -530,23 +531,33 @@ class WorkerRunStore:
     def __init__(self, db_path: str):
         self.db_path = db_path
         Path(db_path).parent.mkdir(parents=True, exist_ok=True)
-        with sqlite3.connect(db_path) as conn:
+        with self._connect() as conn:
             conn.execute('''CREATE TABLE IF NOT EXISTS worker_runs (
                 id TEXT PRIMARY KEY, target TEXT NOT NULL, workspace TEXT NOT NULL, goal TEXT NOT NULL,
                 status TEXT NOT NULL, attempts_json TEXT NOT NULL, baseline_json TEXT NOT NULL,
                 created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
             )''')
 
+    @contextmanager
+    def _connect(self):
+        """Short-lived connection that is always closed (Windows file locks)."""
+        conn = sqlite3.connect(self.db_path, timeout=10.0)
+        try:
+            yield conn
+            conn.commit()
+        finally:
+            conn.close()
+
     def create(self, target: str, workspace: str, goal: str, baseline: Dict[str, Any]) -> Dict[str, Any]:
         run_id = str(uuid.uuid4())
         now = int(time.time())
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect() as conn:
             conn.execute('INSERT INTO worker_runs VALUES (?,?,?,?,?,?,?,?,?)',
                          (run_id, target, workspace, goal, 'running', '[]', json.dumps(baseline), now, now))
         return self.get(run_id)
 
     def get(self, run_id: str) -> Dict[str, Any]:
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect() as conn:
             row = conn.execute('SELECT * FROM worker_runs WHERE id=?', (run_id,)).fetchone()
         if not row:
             raise KeyError(run_id)
@@ -559,7 +570,7 @@ class WorkerRunStore:
     def list(self, limit: int = 20) -> List[Dict[str, Any]]:
         """Return recent worker runs without repository contents or secrets."""
         cap = max(1, min(int(limit), 100))
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect() as conn:
             rows = conn.execute(
                 'SELECT id,target,workspace,goal,status,attempts_json,created_at,updated_at FROM worker_runs ORDER BY updated_at DESC LIMIT ?',
                 (cap,),
@@ -583,7 +594,7 @@ class WorkerRunStore:
         if attempt is not None:
             attempts.append(attempt)
         new_status = status or current['status']
-        with sqlite3.connect(self.db_path) as conn:
+        with self._connect() as conn:
             conn.execute('UPDATE worker_runs SET status=?, attempts_json=?, updated_at=? WHERE id=?',
                          (new_status, json.dumps(attempts, default=str), int(time.time()), run_id))
         return self.get(run_id)
