@@ -4,10 +4,10 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_voice_prompt_is_voice_to_voice_aware():
-    text = (ROOT / "api-gateway" / "main.py").read_text(encoding="utf-8")
+    text = (ROOT / "api-gateway" / "services.py").read_text(encoding="utf-8")
     assert 'Voice-to-voice is a first-class interaction mode' in text
     assert 'Never tell the user that you cannot access their microphone' in text
-    assert 'version="23.0.0"' in text
+    assert 'version="23.0.0"' in (ROOT / "api-gateway" / "main.py").read_text(encoding="utf-8")
 
 
 def test_dashboard_has_barge_in_and_local_voice():

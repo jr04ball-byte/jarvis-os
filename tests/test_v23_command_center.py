@@ -216,11 +216,10 @@ def test_legacy_opencode_write_endpoint_fails_closed():
 
 
 def test_all_declared_agent_tools_exist_in_security_policy():
-    import importlib
-    main = importlib.import_module("main")
+    from services import AGENT_TOOLS
     names = {
         item.get("function", {}).get("name")
-        for item in main.AGENT_TOOLS
+        for item in AGENT_TOOLS
         if isinstance(item, dict)
     }
     assert names
