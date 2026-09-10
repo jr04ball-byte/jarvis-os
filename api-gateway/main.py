@@ -14,7 +14,37 @@ from model_lab import lm_unload as model_lab_lm_unload
 from model_lab import lmstudio_inventory as model_lab_lmstudio
 from model_lab import ollama_inventory as model_lab_ollama
 from model_lab import overview as model_lab_overview
-from pydantic import BaseModel, Field
+from schemas import (
+    DEEP_MODEL,
+    FAST_MODEL,
+    TOOL_MODEL,
+    AgentChatRequest,
+    ArtifactPatch,
+    ArtifactRequest,
+    ChatMessage,
+    ChatRequest,
+    CompareRequest,
+    ConfirmationRequest,
+    ConnectionUpdate,
+    ConversationCreate,
+    ConversationMessage,
+    DeepgramSpeakRequest,
+    DocumentUpload,
+    GeminiChatRequest,
+    GeminiLiveTokenRequest,
+    OpenCodeTaskRequest,
+    OrchestratorAutopilotRequest,
+    OrchestratorGoal,
+    OrchestratorRunRequest,
+    OrchestratorTransition,
+    ProjectWorkerAutofixRequest,
+    ProjectWorkerImplementRequest,
+    ProjectWorkerTargetRequest,
+    ProjectWorkerVerifyRequest,
+    ResearchRequest,
+    ToolRequest,
+    VoiceTurnRequest,
+)
 
 # slowapi is preferred in production.  When the package is unavailable (for
 # example in an offline bootstrap environment), use a small in-process limiter
@@ -83,7 +113,7 @@ from collections import defaultdict, deque
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 import httpx
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -165,9 +195,6 @@ app.include_router(brain_router)
 
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://ollama:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "auto")
-FAST_MODEL = os.getenv("JARVIS_FAST_MODEL", "gemma3:4b")
-DEEP_MODEL = os.getenv("JARVIS_DEEP_MODEL", "qwen3.5:9b")
-TOOL_MODEL = os.getenv("JARVIS_TOOL_MODEL", DEEP_MODEL)
 AI_API_TOKEN = os.getenv("AI_API_TOKEN", "")
 AI_REQUIRE_AUTH = os.getenv("AI_REQUIRE_AUTH", "false").lower() == "true"
 DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY", "").strip()
@@ -216,38 +243,6 @@ def _consume_confirmation(ticket: str) -> dict:
         raise HTTPException(410, "confirmation expired")
     return item
 
-# ==================== Models ====================
-
-class ChatMessage(BaseModel):
-    role: str
-    content: str
-
-class ChatRequest(BaseModel):
-    model: str = "auto"
-    messages: list[ChatMessage]
-    stream: bool = False
-    temperature: float | None = 0.7
-    max_tokens: int | None = 1024
-    conversation_id: int | None = None
-    use_rag: bool = False
-    assistant_profile: str = "general"
-
-class ConversationCreate(BaseModel):
-    title: str
-    model: str = "auto"
-    assistant_profile: str = "general"
-
-class ConversationMessage(BaseModel):
-    role: Literal["user", "assistant", "system"]
-    content: str
-
-class CompareRequest(BaseModel):
-    prompt: str
-    models: list[str] = Field(default_factory=lambda: [FAST_MODEL, DEEP_MODEL])
-
-class DocumentUpload(BaseModel):
-    doc_id: str
-    content: str
 
 # ==================== Smart Model Routing ====================
 
@@ -720,8 +715,6 @@ async def _connection_snapshot() -> dict:
         items.append(item)
     return {"connections":items,"categories":["accounts","home","ai","creative","computer","devices","business"]}
 
-class ConnectionUpdate(BaseModel):
-    enabled: bool
 
 @app.get("/v1/connections")
 async def list_connections():
@@ -743,11 +736,6 @@ async def test_connection(connection_id: str):
 
 # ==================== Google Gemini Cloud ====================
 
-class GeminiChatRequest(BaseModel):
-    messages: list[ChatMessage]
-    model: str | None = None
-    temperature: float | None = 0.7
-    max_tokens: int | None = 1024
 
 @app.get("/v1/gemini/status")
 async def gemini_status():
@@ -806,8 +794,6 @@ GEMINI_AUTH_TOKEN_URL = os.getenv(
     "https://generativelanguage.googleapis.com/v1alpha/auth_tokens",
 )
 
-class GeminiLiveTokenRequest(BaseModel):
-    ttl_minutes: int | None = 10
 
 @app.post("/v1/gemini/live-token")
 @limiter.limit("10/minute")
@@ -862,11 +848,6 @@ async def gemini_live_token(request: Request, body: GeminiLiveTokenRequest = Gem
 
 OPENCODE_SERVER_URL = os.getenv("OPENCODE_SERVER_URL", "http://127.0.0.1:4096")
 
-class OpenCodeTaskRequest(BaseModel):
-    prompt: str = Field(min_length=1, max_length=12000)
-    path: str | None = None
-    target: str | None = None
-    mode: Literal["inspect", "build", "fix", "refactor"] = "inspect"
 
 @app.post("/v1/opencode/task")
 @limiter.limit("10/minute")
@@ -946,10 +927,6 @@ async def deepgram_token():
         logger.exception("Deepgram token error")
         raise HTTPException(502, f"Deepgram token error: {e}")
 
-class DeepgramSpeakRequest(BaseModel):
-    text: str
-    model: str | None = None
-    speed: float | None = 1.0
 
 @app.post("/v1/deepgram-speak")
 async def deepgram_speak(req: DeepgramSpeakRequest):
@@ -1023,16 +1000,7 @@ async def deepgram_status():
 
 
 # ==================== V13 Artifacts / Research ====================
-class ArtifactRequest(BaseModel):
-    title: str = Field(min_length=1, max_length=200)
-    kind: str = Field(default="markdown", max_length=40)
-    content: str = Field(default="", max_length=1_000_000)
-    metadata: dict[str, Any] = Field(default_factory=dict)
 
-class ArtifactPatch(BaseModel):
-    title: str | None = Field(default=None, max_length=200)
-    content: str | None = Field(default=None, max_length=1_000_000)
-    metadata: dict[str, Any] | None = None
 
 def _artifact_path(artifact_id: str) -> Path:
     if not re.fullmatch(r"[a-f0-9]{32}", artifact_id):
@@ -1076,9 +1044,6 @@ async def artifact_delete(artifact_id: str):
     if not path.exists(): raise HTTPException(404,"artifact not found")
     path.unlink(); return {"ok":True,"id":artifact_id}
 
-class ResearchRequest(BaseModel):
-    query: str = Field(min_length=2, max_length=500)
-    num_results: int = Field(default=5, ge=1, le=10)
 
 @app.post("/v1/research/search")
 async def research_search(body: ResearchRequest):
@@ -1496,10 +1461,6 @@ async def calendar_events(email: str, max_results: int = 10):
 
 # ==================== Local Tool / Device Layer ====================
 
-class ToolRequest(BaseModel):
-    tool: str
-    arguments: dict = Field(default_factory=dict)
-    confirmed: bool = False
 
 @app.get("/companion", include_in_schema=False)
 async def companion_ui():
@@ -1704,14 +1665,6 @@ async def system_compute():
 
 # ==================== Jarvis Orchestrator ====================
 
-class OrchestratorGoal(BaseModel):
-    goal: str = Field(min_length=1, max_length=12000)
-
-class OrchestratorTransition(BaseModel):
-    task_id: str
-    status: str
-    result: Any | None = None
-    error: str | None = None
 
 @app.get("/v1/orchestrator/policy")
 async def orchestrator_policy():
@@ -1722,30 +1675,6 @@ async def orchestrator_policy():
 async def orchestrator_targets():
     """Return configured project workspaces without exposing credentials."""
     return {"targets": workspace_snapshot()}
-
-class ProjectWorkerTargetRequest(BaseModel):
-    target: str
-
-
-class ProjectWorkerVerifyRequest(BaseModel):
-    target: str
-    run_tests: bool = True
-    run_build: bool = True
-    run_lint: bool = False
-
-
-class ProjectWorkerImplementRequest(BaseModel):
-    target: str
-    goal: str = Field(min_length=1, max_length=12000)
-    verify: bool = True
-
-
-class ProjectWorkerAutofixRequest(BaseModel):
-    target: str
-    goal: str = Field(min_length=1, max_length=12000)
-    max_retries: int = Field(default=2, ge=0, le=4)
-    run_lint: bool = False
-    resume_run_id: str | None = None
 
 
 def _project_worker_target(target_id: str) -> dict:
@@ -2558,13 +2487,6 @@ async def _agent_tool_impl(name: str, args: dict, confirmed: bool=False):
     if name == "computer_shell": return await execute_tool(ToolRequest(tool="computer_shell",arguments=args,confirmed=confirmed))
     raise HTTPException(404,"unknown agent tool")
 
-class AgentChatRequest(BaseModel):
-    model: str = "auto"
-    messages: list[ChatMessage]
-    assistant_profile: str = "general"
-    conversation_id: int | None = None
-    max_tool_rounds: int = 5
-
 
 def _normalize_tool_args(raw: Any, name: str) -> dict:
     try:
@@ -2674,12 +2596,6 @@ async def agent_chat(request: Request, body: AgentChatRequest):
     return await _run_agent_loop(selected_model, messages, body.assistant_profile,
                                  body.conversation_id, body.max_tool_rounds)
 
-
-class OrchestratorRunRequest(BaseModel):
-    project_id: str
-    max_steps: int = Field(default=12, ge=1, le=30)
-    model: str = "auto"
-    assistant_profile: str = "general"
 
 @app.post("/v1/orchestrator/execute")
 @limiter.limit("10/minute")
@@ -2815,12 +2731,6 @@ Rules:
     return {"project": orchestrator.get_project(body.project_id), "completed_this_run": completed, "status": "step_limit"}
 
 
-class OrchestratorAutopilotRequest(BaseModel):
-    goal: str = Field(min_length=1, max_length=12000)
-    max_steps: int = Field(default=12, ge=1, le=30)
-    model: str = "auto"
-    assistant_profile: str = "general"
-
 @app.post("/v1/orchestrator/autopilot")
 @limiter.limit("10/minute")
 async def orchestrator_autopilot(request: Request, body: OrchestratorAutopilotRequest):
@@ -2850,15 +2760,6 @@ def select_voice_path(text: str, assistant_profile: str = "general") -> str:
     if _VOICE_TOOL_HINTS.search(text or ""):
         return "agent"
     return "stream"
-
-
-class VoiceTurnRequest(BaseModel):
-    model: str = "auto"
-    messages: list[ChatMessage]
-    conversation_id: int | None = None
-    assistant_profile: str = "general"
-    temperature: float | None = 0.7
-    max_tokens: int | None = 512
 
 
 @app.post("/v1/voice/turn")
@@ -2930,11 +2831,6 @@ async def voice_turn(request: Request, body: VoiceTurnRequest):
     )
 
 
-class ConfirmationRequest(BaseModel):
-    confirmation_id: str = Field(min_length=20, max_length=128)
-    confirmed: bool = False
-
-
 @app.post("/v1/agent/confirm")
 @limiter.limit("30/minute")
 async def agent_confirm(request: Request, body: ConfirmationRequest):
@@ -2967,7 +2863,6 @@ async def agent_confirm(request: Request, body: ConfirmationRequest):
             orchestrator.transition(task_id, "completed", result=resumed_result)
         resumed_result["project"] = orchestrator.get_project(project_id)
     return resumed_result
-
 
 
 if __name__ == "__main__":
