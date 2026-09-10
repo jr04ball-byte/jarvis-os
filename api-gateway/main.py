@@ -1,8 +1,51 @@
+# slowapi is preferred in production.  When the package is unavailable (for
+# example in an offline bootstrap environment), use a small in-process limiter
+# so Jarvis remains protected instead of failing to start.
+import asyncio
+import json
+import logging
+import os
+import re
+import secrets
+import threading
+import time
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from typing import Any
+
+import httpx
 from compute_manager import select_mode
 from compute_manager import snapshot as compute_snapshot
 from deps import (
+    _COMPUTE_CACHE,
+    _PROJECT_HEALTH_CACHE,
+    AI_API_TOKEN,
+    AI_REQUIRE_AUTH,
+    ARTIFACTS_DIR,
+    CONNECTIONS_PATH,
+    DEEPGRAM_API_KEY,
+    DEEPGRAM_STT_MODEL,
+    DEEPGRAM_TTS_MODEL,
+    EXA_API_KEY,
+    GEMINI_API_KEY,
+    GEMINI_AUTH_TOKEN_URL,
+    GEMINI_LIVE_MODEL,
+    GEMINI_LIVE_WS_URL,
+    GEMINI_MODEL,
+    GOOGLE_CLOUD_LOCATION,
+    GOOGLE_CLOUD_PROJECT,
+    JARVIS_COMPUTE_MODE,
+    JARVIS_MAX_CONTEXT_CHARS,
+    JARVIS_MAX_RAG_CHARS,
+    JARVIS_MODEL_LOCK,
+    JARVIS_STARTED_AT,
+    MAX_HISTORY_MESSAGES,
+    OLLAMA_URL,
     ORCHESTRATOR_DB,
+    RECENT_REQUESTS,
+    RateLimitExceeded,
     db,
+    limiter,
     monitor,
     orchestrator,
     project_worker_runs,
@@ -59,75 +102,6 @@ from store import ConversationDB as ConversationDB
 from store import DocumentRAG as DocumentRAG
 from store import PerformanceMonitor as PerformanceMonitor
 
-# slowapi is preferred in production.  When the package is unavailable (for
-# example in an offline bootstrap environment), use a small in-process limiter
-# so Jarvis remains protected instead of failing to start.
-try:
-    from slowapi import Limiter
-    from slowapi.errors import RateLimitExceeded
-    from slowapi.util import get_remote_address
-except ImportError:
-    from collections import defaultdict, deque
-    from functools import wraps
-
-    class RateLimitExceeded(Exception):
-        pass
-
-    def get_remote_address(request: Request) -> str:
-        client = getattr(request, "client", None)
-        return getattr(client, "host", "unknown") or "unknown"
-
-    class Limiter:
-        def __init__(self, key_func=get_remote_address):
-            self.key_func = key_func
-            self._hits = defaultdict(deque)
-            self._lock = threading.RLock()
-
-        @staticmethod
-        def _parse(spec: str):
-            amount, unit = spec.split("/", 1)
-            amount = int(amount.strip())
-            unit = unit.strip().lower()
-            windows = {"second": 1, "minute": 60, "hour": 3600, "day": 86400}
-            if unit not in windows:
-                raise ValueError(f"unsupported rate-limit unit: {unit}")
-            return amount, windows[unit]
-
-        def limit(self, spec: str):
-            max_hits, window = self._parse(spec)
-            def decorator(func):
-                @wraps(func)
-                async def wrapped(*args, **kwargs):
-                    request = kwargs.get("request") or next((a for a in args if isinstance(a, Request)), None)
-                    key = self.key_func(request) if request is not None else "unknown"
-                    bucket = (func.__module__, func.__qualname__, key, spec)
-                    now = time.monotonic()
-                    with self._lock:
-                        hits = self._hits[bucket]
-                        cutoff = now - window
-                        while hits and hits[0] <= cutoff:
-                            hits.popleft()
-                        if len(hits) >= max_hits:
-                            raise RateLimitExceeded()
-                        hits.append(now)
-                    return await func(*args, **kwargs)
-                return wrapped
-            return decorator
-import asyncio
-import json
-import logging
-import os
-import re
-import secrets
-import threading
-import time
-from collections import defaultdict, deque
-from datetime import datetime, timedelta, timezone
-from pathlib import Path
-from typing import Any
-
-import httpx
-
 # Load .env if present (local dev). In Docker, env is set by docker-compose.
 try:
     from dotenv import load_dotenv
@@ -168,13 +142,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="AI System — Jarvis Experience", version="23.0.0")
-JARVIS_STARTED_AT = time.time()
-RECENT_REQUESTS = deque(maxlen=120)
-_PROJECT_HEALTH_CACHE: dict[str, tuple[float, dict[str, Any]]] = {}
-_COMPUTE_CACHE: tuple[float, dict[str, Any]] | None = None
 
 # Rate limiting
-limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 
 @app.exception_handler(RateLimitExceeded)
@@ -201,30 +170,10 @@ app.add_middleware(
 
 app.include_router(brain_router)
 
-OLLAMA_URL = os.getenv("OLLAMA_URL", "http://ollama:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "auto")
-AI_API_TOKEN = os.getenv("AI_API_TOKEN", "")
-AI_REQUIRE_AUTH = os.getenv("AI_REQUIRE_AUTH", "false").lower() == "true"
-DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY", "").strip()
-DEEPGRAM_TTS_MODEL = os.getenv("DEEPGRAM_TTS_MODEL", "aura-2-asteria-en")
-DEEPGRAM_STT_MODEL = os.getenv("DEEPGRAM_STT_MODEL", "flux-general-en")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
-GOOGLE_CLOUD_PROJECT = os.getenv("GOOGLE_CLOUD_PROJECT", "").strip()
-GOOGLE_CLOUD_LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "global").strip() or "global"
-EXA_API_KEY = os.getenv("EXA_API_KEY", "").strip()
-ARTIFACTS_DIR = Path(os.getenv("API_DATA_DIR", str(Path(__file__).resolve().parent / "data"))) / "artifacts"
-ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Recent-message window for conversation history. Keeps long chats inside a
 # useful context budget; the next iteration should add token budgeting and/or
 # automatic summarization (see architecture notes).
-MAX_HISTORY_MESSAGES = int(os.getenv("JARVIS_MAX_HISTORY_MESSAGES", "24"))
-JARVIS_MAX_CONTEXT_CHARS = int(os.getenv("JARVIS_CONTEXT_CHARS", "14000"))
-JARVIS_MAX_RAG_CHARS = int(os.getenv("JARVIS_RAG_CHARS", "6000"))
-JARVIS_COMPUTE_MODE = os.getenv("JARVIS_COMPUTE_MODE", "auto").strip().lower()
-JARVIS_ONE_MODEL_POLICY = os.getenv("JARVIS_ONE_MODEL_POLICY", "true").lower() == "true"
-JARVIS_MODEL_LOCK = asyncio.Lock()
 
 # In-memory confirmation tickets. Tickets are single-use and expire quickly.
 # This prevents the client from changing the arguments between proposal and approval.
@@ -399,8 +348,6 @@ async def log_requests(request: Request, call_next):
 
 # ==================== Connection Registry ====================
 
-CONNECTIONS_PATH = Path(os.getenv("API_DATA_DIR", str(Path(__file__).resolve().parent / "data"))) / "connections.json"
-_CONNECTIONS_LOCK = threading.Lock()
 
 CONNECTION_CATALOG = [
     {"id":"google","name":"Google Workspace","category":"accounts","kind":"oauth","description":"Gmail, Calendar and future Google services","requires_confirmation":False},
@@ -552,17 +499,8 @@ async def gemini_chat(request: Request, body: GeminiChatRequest):
 
 # ==================== Gemini Live Browser Token ====================
 
-GEMINI_LIVE_MODEL = os.getenv("GEMINI_LIVE_MODEL", "gemini-3.1-flash-live-preview")
 # Browser clients MUST use Gemini Live's constrained endpoint with a short-lived
 # auth token.  Never hand a permanent Gemini API key to JavaScript.
-GEMINI_LIVE_WS_URL = os.getenv(
-    "GEMINI_LIVE_WS_URL",
-    "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContentConstrained",
-)
-GEMINI_AUTH_TOKEN_URL = os.getenv(
-    "GEMINI_AUTH_TOKEN_URL",
-    "https://generativelanguage.googleapis.com/v1alpha/auth_tokens",
-)
 
 
 @app.post("/v1/gemini/live-token")
@@ -615,8 +553,6 @@ async def gemini_live_token(request: Request, body: GeminiLiveTokenRequest = Gem
     }
 
 # ==================== OpenCode Go Sub-Agent Relay ====================
-
-OPENCODE_SERVER_URL = os.getenv("OPENCODE_SERVER_URL", "http://127.0.0.1:4096")
 
 
 @app.post("/v1/opencode/task")

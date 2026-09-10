@@ -95,8 +95,11 @@ def test_blender_command_center_sources_are_shipped():
 def test_gemini_live_never_returns_permanent_api_key_in_source():
     source = (ROOT / "api-gateway" / "main.py").read_text(encoding="utf-8")
     assert '"token": GEMINI_API_KEY' not in source
-    assert "auth_tokens" in source
-    assert "BidiGenerateContentConstrained" in source
+    # V24 P2: endpoint config lives in deps.py; the constrained-endpoint
+    # pinning moves with it.
+    config = (ROOT / "api-gateway" / "deps.py").read_text(encoding="utf-8")
+    assert "auth_tokens" in config
+    assert "BidiGenerateContentConstrained" in config
     voice = (ROOT / "api-gateway" / "voice-live.html").read_text(encoding="utf-8")
     assert "access_token=" in voice
     assert "run_project_worker" in voice
