@@ -7,6 +7,7 @@ import time
 from collections.abc import AsyncGenerator
 from typing import Any
 
+from budgets import budget as token_budget
 from events import ProviderFailed, ProviderSelected
 from events import bus as event_bus
 from fastapi import APIRouter, HTTPException
@@ -106,6 +107,7 @@ async def complete(req: BrainRequest) -> dict[str, Any]:
             continue
 
         started = time.time()
+        token_budget.check(name, provider.kind)
         try:
             await event_bus.emit_async(ProviderSelected(provider=name, model=provider.model, reason=decision.reason))
             result = await provider.complete(
@@ -120,6 +122,7 @@ async def complete(req: BrainRequest) -> dict[str, Any]:
             )
             elapsed = int((time.time() - started) * 1000)
             router_engine.record_provider_result(name, ok=True, elapsed_ms=elapsed, route_reason=decision.reason)
+            token_budget.record(name, provider.kind, result.usage)
             attempts.append({"provider": name, "ok": True, "elapsed_ms": elapsed})
             return {
                 "message": {"role": "assistant", "content": result.content},
@@ -162,6 +165,7 @@ async def stream(req: BrainRequest) -> AsyncGenerator[str, None]:
             continue
         started = time.time()
         yielded = False
+        token_budget.check(name, provider.kind)
         try:
             await event_bus.emit_async(ProviderSelected(provider=name, model=provider.model, reason=decision.reason))
             yield f"event: route\ndata: {json.dumps(decision.as_dict())}\n\n"

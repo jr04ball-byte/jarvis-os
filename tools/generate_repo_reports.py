@@ -30,16 +30,41 @@ EXCLUDED_DIRS = {
 
 def _tree() -> str:
     lines = ["# Jarvis OS repository tree (generated)", "."]
-    # Case-insensitive key: PureWindowsPath sorts case-insensitively while
-    # PurePosixPath does not, so a bare sorted() diverges between Windows
-    # dev machines and Linux CI. The tiebreak keeps it total/deterministic.
-    for path in sorted(ROOT.rglob("*"), key=lambda p: (str(p).lower(), str(p))):
-        rel = path.relative_to(ROOT)
-        if any(part in EXCLUDED_DIRS for part in rel.parts):
-            continue
-        depth = len(rel.parts)
-        marker = "/" if path.is_dir() else ""
-        lines.append(f"{'  ' * (depth - 1)}- {rel.as_posix()}{marker}")
+    # Tracked files only (git ls-files): local-only files (.env, caches,
+    # runtime data) must never leak into the committed tree, and the tree
+    # must be identical on every machine and CI runner.
+    import subprocess as _subprocess
+
+    try:
+        tracked = _subprocess.check_output(
+            ["git", "ls-files", "-z"], cwd=ROOT, text=False).decode().split("\0")
+        tracked = sorted({t for t in tracked if t})
+    except Exception:
+        tracked = []
+    if tracked:
+        seen_dirs: set[str] = set()
+
+        def emit_dirs(parts: list[str]) -> list[str]:
+            out = []
+            for i in range(1, len(parts)):
+                d = "/".join(parts[:i]) + "/"
+                if d not in seen_dirs:
+                    seen_dirs.add(d)
+                    out.append(f"{'  ' * (i - 1)}- {d}")
+            return out
+
+        for rel in tracked:
+            parts = rel.split("/")
+            lines.extend(emit_dirs(parts))
+            lines.append(f"{'  ' * (len(parts) - 1)}- {parts[-1]}")
+    else:  # pragma: no cover - fallback when git is unavailable
+        for path in sorted(ROOT.rglob("*"), key=lambda p: (str(p).lower(), str(p))):
+            rel = path.relative_to(ROOT)
+            if any(part in EXCLUDED_DIRS for part in rel.parts):
+                continue
+            depth = len(rel.parts)
+            marker = "/" if path.is_dir() else ""
+            lines.append(f"{'  ' * (depth - 1)}- {rel.as_posix()}{marker}")
     return "\n".join(lines) + "\n"
 
 

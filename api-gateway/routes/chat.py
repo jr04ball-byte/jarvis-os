@@ -4,6 +4,7 @@ import time
 from datetime import datetime, timedelta, timezone
 
 import httpx
+from budgets import budget as token_budget
 from compute_manager import select_mode
 from deps import (
     GEMINI_API_KEY,
@@ -58,6 +59,7 @@ async def gemini_chat(request: Request, body: GeminiChatRequest):
     """Optional cloud chat. The API key stays server-side; Qwen/Ollama remains the local default."""
     if not GEMINI_API_KEY:
         raise HTTPException(503, "Google Gemini is not configured. Set GEMINI_API_KEY in .env")
+    token_budget.check("gemini", "cloud")
     model = body.model or GEMINI_MODEL
     contents = []
     for m in body.messages[-100:]:
@@ -83,6 +85,7 @@ async def gemini_chat(request: Request, body: GeminiChatRequest):
     data = r.json()
     parts = (((data.get("candidates") or [{}])[0].get("content") or {}).get("parts") or [])
     answer = "".join(p.get("text", "") for p in parts if isinstance(p, dict))
+    token_budget.record("gemini", "cloud", data.get("usageMetadata"))
     return {"message": {"role": "assistant", "content": answer}, "model": model, "provider": "google_gemini"}
 
 

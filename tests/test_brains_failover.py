@@ -13,6 +13,8 @@ from providers.base import ProviderResult
 
 
 class FakeProvider:
+    kind = "local"
+
     def __init__(self, name="fake", fail=False, chunks=None):
         self.name = name
         self.model = f"{name}-model"
