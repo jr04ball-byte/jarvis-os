@@ -30,7 +30,10 @@ EXCLUDED_DIRS = {
 
 def _tree() -> str:
     lines = ["# Jarvis OS repository tree (generated)", "."]
-    for path in sorted(ROOT.rglob("*")):
+    # Case-insensitive key: PureWindowsPath sorts case-insensitively while
+    # PurePosixPath does not, so a bare sorted() diverges between Windows
+    # dev machines and Linux CI. The tiebreak keeps it total/deterministic.
+    for path in sorted(ROOT.rglob("*"), key=lambda p: (str(p).lower(), str(p))):
         rel = path.relative_to(ROOT)
         if any(part in EXCLUDED_DIRS for part in rel.parts):
             continue
