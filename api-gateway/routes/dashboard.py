@@ -22,13 +22,6 @@ async def dashboard_ui():
     return FileResponse(os.path.join(str(GATEWAY_DIR), "dashboard.html"), media_type="text/html")
 
 
-@router.get("/godseye", include_in_schema=False)
-@router.get("/godseye.html", include_in_schema=False)
-async def godseye_ui():
-    """V19 tactical globe view retained as an optional operations surface."""
-    return FileResponse(os.path.join(str(GATEWAY_DIR), "godseye.html"), media_type="text/html")
-
-
 @router.get("/dashboard-classic", include_in_schema=False)
 @router.get("/dashboard-classic.html", include_in_schema=False)
 async def dashboard_classic_ui():

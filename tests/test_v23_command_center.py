@@ -134,7 +134,7 @@ def test_fastapi_v23_smoke_and_dashboard_assets(monkeypatch):
     assert "JARVIS V24" in dashboard.text
 
     godseye = client.get("/godseye")
-    assert godseye.status_code == 200
+    assert godseye.status_code == 404
 
     poster = client.get("/command-center-poster.png")
     assert poster.status_code == 200

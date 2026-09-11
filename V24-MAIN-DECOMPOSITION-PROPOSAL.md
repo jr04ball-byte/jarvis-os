@@ -52,7 +52,7 @@ api-gateway/
     worker.py          # NEW: /v1/project-worker/*, /v1/tools*, /v1/computer/*
     connections.py     # NEW: /v1/connections/*, /v1/model-lab/*, /v1/models
     agent.py           # NEW: /v1/agent/chat, /v1/agent/confirm, agent loop helpers
-    ui.py              # NEW: dashboard/voice/companion/godseye pages + blender assets
+    ui.py              # NEW: dashboard/voice/companion pages + blender assets
 ```
 
 ## 3. Dependency rules (enforced by review + a future import-lint gate)

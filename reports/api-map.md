@@ -1,7 +1,7 @@
 # Jarvis OS — API Map (generated)
 
 **FastAPI application version:** `24.0.0-rc1`  
-**Registered API/UI routes:** **104**
+**Registered API/UI routes:** **102**
 
 | Methods | Path | Name |
 |---|---|---|
@@ -25,8 +25,6 @@
 | GET | `/dashboard-classic.html` | `dashboard_classic_ui` |
 | GET | `/dashboard.html` | `dashboard_ui` |
 | GET | `/gmail/messages` | `gmail_messages` |
-| GET | `/godseye` | `godseye_ui` |
-| GET | `/godseye.html` | `godseye_ui` |
 | GET | `/health` | `health_check` |
 | GET | `/orb-loop.mp4` | `blender_dashboard_asset` |
 | GET | `/orb-loop.webm` | `blender_dashboard_asset` |
