@@ -25,12 +25,6 @@ Thumbs.db
 logs/
 .venv/pip.ok
 
-# Blender bake intermediates (keep webm/mp4 + poster, drop PNG sequence)
-api-gateway/assets/orb-loop-*.png
-api-gateway/assets/bg-loop-*.png
-!api-gateway/assets/orb-poster.png
-!api-gateway/assets/bg-poster.png
-
 # Jarvis runtime state
 api-gateway/data/orchestrator.db
 data/orchestrator.db
@@ -38,9 +32,6 @@ data/orchestrator.db
 # Jarvis project-worker runtime state
 data/project_worker.db
 api-gateway/data/project_worker.db
-
-# V23 Blender command-center bake intermediates
-api-gateway/assets/command-center-frames/
 
 # API gateway runtime data / credentials
 api-gateway/data/*

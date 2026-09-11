@@ -26,7 +26,7 @@ from services import (
 
 
 def test_select_model_explicit_passthrough():
-    assert select_model("qwen3.5:9b", [{"role": "user", "content": "hi"}], "general") == "qwen3.5:9b"
+    assert select_model("llama3.1:8b", [{"role": "user", "content": "hi"}], "general") == "llama3.1:8b"
 
 
 def test_select_model_auto_fast_and_deep():
@@ -42,7 +42,7 @@ def test_select_model_ignores_injected_system_prompt_and_sales():
 
 def test_select_agent_model_prefers_tool_capable():
     assert select_agent_model("auto") == TOOL_MODEL
-    assert select_agent_model("gemma3:4b") == TOOL_MODEL
+    assert select_agent_model(FAST_MODEL) == TOOL_MODEL
     assert select_agent_model("qwen3:3b") == "qwen3:3b"
 
 
@@ -150,3 +150,4 @@ def test_connection_snapshot_returns_mapping():
 
     snap = asyncio.run(run())
     assert isinstance(snap, dict)
+

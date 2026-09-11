@@ -61,7 +61,7 @@ echo.
 echo 📥 Next step: Download your first AI model
 echo.
 echo Recommended starter model (Llama 3.1 8B):
-echo   docker exec -it ollama ollama pull qwen3.5:9b
+echo   docker exec -it ollama ollama pull llama3.1:8b
 echo.
 echo This will download ~5GB. Please wait for it to complete.
 echo.
@@ -71,9 +71,10 @@ echo   🎨 Image Generation: http://localhost:8188
 echo   🔌 API Gateway: http://localhost:8000
 echo.
 echo Other recommended models:
-echo   docker exec -it ollama ollama pull qwen3.5:9b
+echo   docker exec -it ollama ollama pull llama3.1:8b
 echo   docker exec -it ollama ollama pull mistral:7b
 echo   docker exec -it ollama ollama pull deepseek-coder:6.7b
 echo.
 echo ==================================================
 pause
+

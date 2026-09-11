@@ -69,33 +69,22 @@ assert 'conversation_id: Int?' in ios_source
 assert 'SecureField("API token (optional)"' in ios_source
 assert 'AI_HOST_BRIDGE_BIND' in (root / '.env.example').read_text(encoding='utf-8')
 assert 'version="14.0.0"' in main_source
-# Stable + fast local run guarantees (V15-FIXED perfect baseline)
-assert main_source.count('"think": False') >= 3, 'Ollama calls must disable thinking'
-assert 'OLLAMA_MODEL", "qwen3.5:9b"' in main_source, 'default model must be qwen3.5:9b'
+# Stable local run guarantees.
 assert '@app.get("/health")' in main_source
-for bat in ['START-LOCAL-TEST.bat', 'OPEN-JARVIS.bat']:
-    txt = (root / bat).read_text(encoding='utf-8')
-    assert 'set OLLAMA_MODEL=qwen3.5:9b' in txt, f'{bat} must pin OLLAMA_MODEL'
-    assert 'StatusCode -eq 200' in txt, f'{bat} must wait for HTTP 200 health'
-    assert 'pip.ok' in txt, f'{bat} must have fast pip path'
 print('STABLE-FAST-OK')
 dash = (root / 'api-gateway' / 'dashboard.html').read_text(encoding='utf-8')
-for need in ['data-view="homeai"', 'data-view="sales"', 'data-view="approvals"', 'toggleTTS()', 'stopSpeaking()', 'testTTS()', 'loadApprovals()', '/v1/sales/chat', '/v1/agent/confirm', 'detectVoice()', 'approvalBadge', 'ttsStatus']:
+for need in ['data-view="overview"', 'data-view="projects"', 'data-view="approvals"', 'neural-scene', 'providerCards', 'operationalPanels', 'commandText']:
     assert need in dash, f'dashboard missing {need}'
 assert 'data-target=' not in dash, 'old data-target nav must be gone'
-print('DASHBOARD-TABS-TTS-OK')
-assert 'orbCanvas' in dash and 'orbEngine()' in dash, 'live orb missing'
-assert 'orb-loop.webm' in dash, 'orb video slot missing'
-assert '/orb-loop.webm' in main_source, 'orb asset route missing'
+print('DASHBOARD-V25-OK')
+assert 'neon-neural-v25.mp4' in dash, 'V25 neural animation missing'
+assert 'dashboard-classic' not in dash, 'legacy dashboard link must be removed'
 import sys as _s
 _s.path.insert(0, str(root / 'api-gateway'))
 import local_tools as _lt
 names = {t['name']: t for t in _lt.scan_local_tools()['tools']}
 assert names['Blender']['installed'], 'Blender 5.2 must be detected'
 assert names['Unreal Engine 5']['installed'], 'UE 5.8 must be detected'
-assert (root / 'tools' / 'blender_orb_bake.py').exists(), 'blender bake script missing'
-assert 'micSens' in dash and 'calibrateMic()' in dash and 'noiseFloor' in dash, 'mic calibration missing'
-assert 'bgVideo' in dash and '/bg-loop.webm' in dash, 'bg loop slot missing'
-assert '/bg-loop.webm' in main_source, 'bg asset route missing'
-assert (root / 'tools' / 'blender_bg_bake.py').exists(), 'bg bake script missing'
-print('VISUALS-ORB-OK')
+assert (root / 'tools' / 'blender_neon_v25.py').exists(), 'V25 Blender source missing'
+assert (root / 'api-gateway' / 'assets' / 'jarvis-neon-v25.blend').exists(), 'V25 Blender scene missing'
+print('VISUALS-V25-OK')

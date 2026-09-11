@@ -52,6 +52,7 @@ def test_f_system_prompt_cannot_force_deep():
 
 
 def test_explicit_and_sales_rules_preserved():
-    assert select_model('qwen3.5:9b', [{'role': 'user', 'content': 'hi'}], 'general') == 'qwen3.5:9b'
+    assert select_model('llama3.1:8b', [{'role': 'user', 'content': 'hi'}], 'general') == 'llama3.1:8b'
     assert select_model('auto', [{'role': 'user', 'content': 'hi'}], 'sales') == FAST
     assert select_agent_model('auto', [{'role': 'user', 'content': 'hi'}], 'general') == TOOL_MODEL
+

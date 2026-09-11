@@ -14,7 +14,7 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3.5:9b")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.1:8b")
 COMPUTE_MODE = os.getenv("JARVIS_COMPUTE_MODE", "auto").strip().lower()
 MIN_FREE_VRAM_MB = int(os.getenv("JARVIS_MIN_FREE_VRAM_MB", "768"))
 HYBRID_GPU_LAYERS = int(os.getenv("JARVIS_HYBRID_GPU_LAYERS", "20"))

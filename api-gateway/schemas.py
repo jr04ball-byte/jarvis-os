@@ -11,9 +11,9 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 # Model defaults shared by schemas and routing (moved from main.py in V24 P0).
-FAST_MODEL = os.getenv("JARVIS_FAST_MODEL", "gemma3:4b")
-DEEP_MODEL = os.getenv("JARVIS_DEEP_MODEL", "qwen3.5:9b")
-TOOL_MODEL = os.getenv("JARVIS_TOOL_MODEL", DEEP_MODEL)
+FAST_MODEL = os.getenv("JARVIS_FAST_MODEL", "gemma2:9b")
+DEEP_MODEL = os.getenv("JARVIS_DEEP_MODEL", "mistral-nemo:12b")
+TOOL_MODEL = os.getenv("JARVIS_TOOL_MODEL", "llama3.1:8b")
 
 class ChatMessage(BaseModel):
     role: str

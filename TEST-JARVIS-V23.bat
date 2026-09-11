@@ -29,10 +29,9 @@ if errorlevel 1 (
 
 where ffprobe.exe >nul 2>nul
 if errorlevel 1 (
-  echo [WARN] FFprobe not found - command-center media probe skipped.
+  echo [WARN] FFprobe not found - V25 neural media probe skipped.
 ) else (
-  call :run "Command Center WebM probe" ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height -show_entries format=duration -of default=noprint_wrappers=1 api-gateway\assets\command-center-loop.webm
-  call :run "Command Center MP4 probe" ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height -show_entries format=duration -of default=noprint_wrappers=1 api-gateway\assets\command-center-loop.mp4
+  call :run "V25 neural MP4 probe" ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height -show_entries format=duration -of default=noprint_wrappers=1 api-gateway\assets\neon-neural-v25.mp4
 )
 
 where docker.exe >nul 2>nul
@@ -45,7 +44,7 @@ if errorlevel 1 (
 where blender.exe >nul 2>nul
 if errorlevel 1 (
   echo [INFO] Blender not on PATH. The dashboard uses included animated assets.
-  echo        Run BAKE-JARVIS-DASHBOARD.bat after Blender is installed to create the richer scene.
+  echo        The editable V25 Blender scene is included in api-gateway\assets.
 ) else (
   call :run "Blender availability" blender --version
 )

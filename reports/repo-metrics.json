@@ -31,16 +31,16 @@
       "path": "api-gateway/intelligence_router.py"
     },
     {
-      "lines": 275,
+      "lines": 276,
       "path": "api-gateway/google_oauth.py"
+    },
+    {
+      "lines": 269,
+      "path": "api-gateway/routes/voice.py"
     },
     {
       "lines": 262,
       "path": "api-gateway/routes/telemetry.py"
-    },
-    {
-      "lines": 260,
-      "path": "api-gateway/brains.py"
     }
   ],
   "local_dependency_edges": {
@@ -164,8 +164,8 @@
   "local_import_cycle_count": 0,
   "local_import_cycles": [],
   "main_py_lines": 185,
-  "python_test_files": 28,
-  "registered_routes": 101,
+  "python_test_files": 29,
+  "registered_routes": 100,
   "route_groups": {
     "activity": 1,
     "agent": 3,
@@ -184,8 +184,6 @@
     "conversations": 4,
     "dashboard": 1,
     "dashboard-activity.js": 1,
-    "dashboard-classic": 1,
-    "dashboard-classic.html": 1,
     "dashboard.html": 1,
     "deepgram-speak": 1,
     "deepgram-speak-stream": 1,
@@ -212,7 +210,7 @@
     "system": 2,
     "telemetry": 2,
     "tools": 3,
-    "voice": 2,
+    "voice": 3,
     "voice-engine.js": 1,
     "voice-live": 1,
     "voice-live.html": 1

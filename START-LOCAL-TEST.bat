@@ -55,9 +55,9 @@ REM Free port 8000 only if held by Python/uvicorn from a prior run.
 powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { $p=Get-Process -Id $_ -ErrorAction SilentlyContinue; if($p -and ($p.ProcessName -like '*python*' -or $p.CommandLine -like '*uvicorn*')){ Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue } }" >nul 2>&1
 start "AI System API" cmd /k "cd /d "%~dp0api-gateway" && set OLLAMA_URL=http://127.0.0.1:11434 && set OLLAMA_MODEL=auto && ..\.venv\Scripts\python.exe -m uvicorn main:app --host 127.0.0.1 --port 8000"
 
-echo Checking default model qwen3.5:9b...
-powershell -NoProfile -Command "try { $r=Invoke-WebRequest -UseBasicParsing -TimeoutSec 3 http://127.0.0.1:11434/api/show -Method POST -ContentType 'application/json' -Body '{\"name\":\"qwen3.5:9b\"}'; exit 0 } catch { exit 1 }" >nul 2>&1
-if errorlevel 1 echo WARNING: qwen3.5:9b not found in Ollama. Run: ollama pull qwen3.5:9b
+echo Checking default model llama3.1:8b...
+powershell -NoProfile -Command "try { $r=Invoke-WebRequest -UseBasicParsing -TimeoutSec 3 http://127.0.0.1:11434/api/show -Method POST -ContentType 'application/json' -Body '{\"name\":\"llama3.1:8b\"}'; exit 0 } catch { exit 1 }" >nul 2>&1
+if errorlevel 1 echo WARNING: llama3.1:8b not found in Ollama. Run: ollama pull llama3.1:8b
 
 echo Waiting for API...
 for /l %%i in (1,1,30) do (
@@ -92,3 +92,4 @@ echo.
 echo SETUP FAILED. See the message above.
 pause
 exit /b 1
+

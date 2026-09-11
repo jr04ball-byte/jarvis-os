@@ -1,4 +1,4 @@
-FROM qwen3.5:9b
+FROM llama3.1:8b
 
 # Set reasonable generation limits
 PARAMETER num_predict 2048
@@ -14,3 +14,4 @@ PARAMETER stop "<|eot_id|>"
 
 # System prompt for better responses
 SYSTEM """You are a helpful, concise AI assistant. Provide clear, accurate answers without unnecessary elaboration. Stop when you've fully answered the question."""
+
