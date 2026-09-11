@@ -103,3 +103,31 @@ def test_live_event_stream_route_is_registered():
     assert "/v1/telemetry/events" in main.app.openapi()["paths"]
     source = (Path(__file__).resolve().parents[1] / "api-gateway" / "dashboard.html").read_text(encoding="utf-8")
     assert "EventSource('/v1/telemetry/events')" in source
+
+
+def test_activity_and_maintenance_work_without_lifespan():
+    """V25: routes must not 500 when app.state was never populated."""
+    import main
+    from fastapi.testclient import TestClient
+
+    client = TestClient(main.app, raise_server_exceptions=False)
+    activity = client.get("/v1/activity")
+    assert activity.status_code == 200
+    assert set(activity.json()) >= {"sequence", "state", "counts", "events"}
+    maintenance = client.get("/v1/maintenance")
+    assert maintenance.status_code == 200
+    assert maintenance.json()["state"] == "idle"
+
+
+def test_companion_auth_matrix(monkeypatch):
+    import main
+    from fastapi.testclient import TestClient
+    from routes import companion
+
+    monkeypatch.setattr(companion, "AI_API_TOKEN", "test-token")
+    client = TestClient(main.app, raise_server_exceptions=False)
+    assert client.get("/v1/companion/status").status_code == 401
+    assert client.get("/v1/companion/status", headers={"authorization": "Bearer no"}).status_code == 401
+    ok = client.get("/v1/companion/status", headers={"authorization": "Bearer test-token"})
+    assert ok.status_code == 200
+    assert ok.json()["version"] == main.APP_VERSION

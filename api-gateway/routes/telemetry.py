@@ -3,7 +3,6 @@ import asyncio
 import json
 import logging
 import time
-from dataclasses import asdict
 from datetime import datetime, timezone
 from typing import Any
 
@@ -32,9 +31,11 @@ from services import (
     _PENDING_ACTIONS,
     _PENDING_LOCK,
     _PENDING_TTL_SECONDS,
+    _activity_core,
     _cached_compute_snapshot,
     _cached_target_health,
     _configuration_snapshot,
+    _maintenance_worker,
     _pending_snapshot,
     build_tools_list,
 )
@@ -47,6 +48,16 @@ logger = logging.getLogger(__name__)
 
 
 router = APIRouter()
+
+
+@router.get('/v1/activity')
+async def activity(request: Request, after: int = 0):
+    return _activity_core(request).snapshot(after)
+
+
+@router.get('/v1/maintenance')
+async def maintenance_status(request: Request):
+    return dict(_maintenance_worker(request).status)
 
 
 @router.get("/v1/system/status")
@@ -190,7 +201,11 @@ async def telemetry_events(request: Request):
                 pass
 
         def on_event(event: Event) -> None:
-            payload = asdict(event)
+            # Export only safe identifiers and outcomes, never free-text errors/payloads.
+            payload = {'name': event.name, 'ts': event.ts}
+            status = getattr(event, 'status', '')
+            if status:
+                payload['status'] = status
             loop.call_soon_threadsafe(enqueue, payload)
 
         event_bus.subscribe(Event, on_event)

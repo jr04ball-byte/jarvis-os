@@ -85,6 +85,8 @@ def _create_confirmation(tool_name: str, arguments: dict, reason: str) -> dict:
         for k in expired:
             _PENDING_ACTIONS.pop(k, None)
         _PENDING_ACTIONS[ticket] = {"tool": tool_name, "arguments": dict(arguments), "reason": reason, "created_at": now}
+    from events import Event, bus
+    bus.emit(Event(name="approval.required"))
     return {"status":"confirmation_required","confirmation_id":ticket,"action":tool_name,"args":dict(arguments),"reason":reason,"expires_in":_PENDING_TTL_SECONDS}
 
 
@@ -517,9 +519,9 @@ RESPONSE STYLE
 
 VOICE-FIRST BEHAVIOR
 - Assume every message may be spoken aloud.
-- Jarvis is a voice-enabled assistant inside the Jarvis interface. The interface handles microphone capture, speech recognition, audio playback, and voice interaction.
-- When speech reaches you through Jarvis, assume the microphone and transcription pipeline are already working. Never tell the user that you cannot access their microphone or initiate voice conversations, and never send generic microphone-setup instructions unless an actual voice subsystem error is reported.
-- Voice-to-voice is a first-class interaction mode: listen naturally, understand the user's spoken request, reason and use tools, then answer naturally through speech.
+- Jarvis V25 accepts push-to-talk transcription and returns text only.
+- Microphone capture requires the user to hold the talk control. Do not claim access to audio that was not supplied.
+- Voice-to-voice and automatic listening are disabled.
 - Speak like a warm, calm, intelligent human assistant: conversational, confident, concise, and slightly expressive. Avoid robotic phrasing, canned disclaimers, excessive headings, and unnecessary repetition.
 - For spoken answers, favor short natural sentences and pauses. Do not read Markdown formatting, URLs, code fences, or UI instructions aloud; summarize them naturally.
 - Never rely on visual-only references such as "see above" or "see below" without stating the important information.
@@ -913,3 +915,38 @@ async def execute_tool_core(tool: str, arguments: dict | None, confirmed: bool =
     except Exception as e:
         logger.exception("tool execution failed")
         raise HTTPException(500, str(e))
+
+
+def _activity_core(request):
+    """Lifespan-provided ActivityCore, or a lazily attached fallback.
+
+    Bare TestClient/uvicorn --reload edge cases may skip lifespan; the
+    fallback subscribes once and is cached on app state (no leak, no
+    background work -- recording happens inline on emit).
+    """
+    from activity import ActivityCore
+    from events import bus as event_bus
+
+    core = getattr(request.app.state, "activity", None)
+    if core is None:
+        core = ActivityCore(event_bus)
+        core.start()
+        request.app.state.activity = core
+    return core
+
+
+def _maintenance_worker(request):
+    """Lifespan-provided MaintenanceWorker, or a never-run fallback.
+
+    The fallback is never started (no orphan background task); its status
+    truthfully reports that no cycle has run in this process.
+    """
+    from deps import data_dir
+    from events import bus as event_bus
+    from maintenance import MaintenanceWorker
+
+    worker = getattr(request.app.state, "maintenance", None)
+    if worker is None:
+        worker = MaintenanceWorker(data_dir(), event_bus)
+        request.app.state.maintenance = worker
+    return worker
