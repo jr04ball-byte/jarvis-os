@@ -94,6 +94,17 @@ def test_primary_dashboard_uses_reference_layout_and_live_controls():
     assert "dashboard-classic" not in html
 
 
+def test_sidebar_scrolls_and_chat_thread_is_inline():
+    html = (ROOT / "api-gateway" / "dashboard.html").read_text(encoding="utf-8")
+    # Sidebar nav must scroll on short viewports (settings stays reachable).
+    assert ".nav{" in html and "overflow-y:auto" in html
+    assert 'id="view-chat"' in html and 'id="chatThread"' in html
+    assert "data-view=\"chat\"" in html
+    # Answers render into the trailing thread, not a modal that must be closed.
+    assert "chatAppend('user'" in html and "chatAppend('assistant'" in html
+    assert "showDialog('Jarvis'" not in html
+
+
 def test_only_v25_blender_sources_are_shipped():
     assert (ROOT / "tools" / "blender_neon_v25.py").is_file()
     assert (ROOT / "api-gateway" / "assets" / "jarvis-neon-v25.blend").is_file()
