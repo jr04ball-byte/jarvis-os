@@ -1,7 +1,7 @@
 # Jarvis OS — API Map (generated)
 
-**FastAPI application version:** `24.0.0-rc1`  
-**Registered API/UI routes:** **102**
+**FastAPI application version:** `25.0.0-rc1`  
+**Registered API/UI routes:** **107**
 
 | Methods | Path | Name |
 |---|---|---|
@@ -31,6 +31,7 @@
 | GET | `/orb-poster.png` | `blender_dashboard_asset` |
 | GET | `/ready` | `readiness_check` |
 | GET | `/stats` | `get_stats` |
+| GET | `/v1/activity` | `activity` |
 | POST | `/v1/agent/chat` | `agent_chat` |
 | POST | `/v1/agent/confirm` | `agent_confirm` |
 | GET | `/v1/agent/pending` | `agent_pending` |
@@ -47,6 +48,9 @@
 | POST | `/v1/chat/completions` | `chat_completion` |
 | POST | `/v1/chat/completions-rag` | `chat_with_rag` |
 | GET | `/v1/command-center/overview` | `command_center_overview` |
+| POST | `/v1/companion/chat` | `chat` |
+| POST | `/v1/companion/confirm` | `confirm` |
+| GET | `/v1/companion/status` | `status` |
 | POST | `/v1/compare` | `compare_models` |
 | GET | `/v1/computer/capabilities` | `computer_capabilities_route` |
 | GET | `/v1/computer/observe` | `computer_observe_route` |
@@ -69,6 +73,7 @@
 | POST | `/v1/gemini/chat` | `gemini_chat` |
 | POST | `/v1/gemini/live-token` | `gemini_live_token` |
 | GET | `/v1/gemini/status` | `gemini_status` |
+| GET | `/v1/maintenance` | `maintenance_status` |
 | POST | `/v1/model-lab/benchmark` | `model_lab_benchmark_route` |
 | GET | `/v1/model-lab/huggingface` | `model_lab_huggingface` |
 | POST | `/v1/model-lab/lmstudio/load` | `model_lab_load` |

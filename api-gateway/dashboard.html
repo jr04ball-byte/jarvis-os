@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#07101f">
-<title>Jarvis V24 — Command Center</title>
+<title>Jarvis V25 — Command Center</title>
 <style>
 :root{
   --bg:#06101e;--bg2:#0a1425;--panel:rgba(12,24,42,.78);--panel2:rgba(14,29,50,.93);
@@ -44,14 +44,14 @@ button,input,select{font:inherit}.ambient{position:fixed;inset:0;z-index:-3;over
 .view{display:none}.view.active{display:block}.screen-title{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;margin:4px 0 16px}.screen-title h2{margin:0;font-size:22px;letter-spacing:-.6px}.screen-title p{margin:5px 0 0;color:var(--muted);font-size:10px;line-height:1.5}.screen-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.screen-grid.three{grid-template-columns:1fr 1fr 1fr}.screen-card{min-height:250px}.control-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.select,.field,.textarea{border:1px solid var(--line);background:#081528;color:#fff;border-radius:10px;padding:9px 11px;outline:0;font-size:10px}.field{min-width:260px;flex:1}.textarea{width:100%;min-height:98px;resize:vertical}.select:focus,.field:focus,.textarea:focus{border-color:rgba(97,221,255,.42);box-shadow:0 0 0 3px rgba(97,221,255,.07)}.ctl-btn{border:1px solid rgba(97,221,255,.22);background:rgba(97,221,255,.09);color:var(--cyan);border-radius:10px;padding:9px 12px;font-size:9px;font-weight:800;cursor:pointer}.ctl-btn:hover{background:rgba(97,221,255,.16)}.ctl-btn.danger{color:var(--red);border-color:rgba(255,107,124,.24);background:rgba(255,107,124,.07)}.ctl-btn.success{color:var(--green);border-color:rgba(93,242,177,.24);background:rgba(93,242,177,.07)}.result-box{margin-top:12px;border:1px solid rgba(116,188,238,.11);border-radius:12px;background:rgba(4,12,23,.65);padding:12px;min-height:110px;max-height:330px;overflow:auto;white-space:pre-wrap;word-break:break-word;color:#a9bdd1;font:9px/1.55 Consolas,monospace}.route-decision{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:12px}.route-chip{border:1px solid var(--line);background:rgba(9,20,36,.72);border-radius:12px;padding:11px}.route-chip small{display:block;color:var(--muted);font-size:7px;text-transform:uppercase}.route-chip b{display:block;margin-top:4px;font-size:11px}.approval-item{border:1px solid rgba(255,199,106,.18);border-radius:12px;background:rgba(41,31,14,.18);padding:12px;margin-bottom:9px}.approval-item b{font-size:9px}.approval-item p{font-size:8px;color:var(--muted);line-height:1.5;margin:5px 0 9px}.approval-actions{display:flex;gap:7px}.memory-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}.memory-stat{border:1px solid var(--line);border-radius:14px;background:rgba(9,20,36,.68);padding:16px}.memory-stat small{font-size:8px;color:var(--muted);text-transform:uppercase}.memory-stat b{display:block;font-size:24px;margin-top:5px}.detail-list{display:grid;gap:8px}.detail-row{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid rgba(112,176,221,.08);padding:9px 0;font-size:9px}.detail-row span{color:var(--muted)}.detail-row b{font-size:9px;text-align:right}.wide{grid-column:1/-1}@media(max-width:980px){.screen-grid,.screen-grid.three{grid-template-columns:1fr}.route-decision,.memory-grid{grid-template-columns:1fr 1fr}.wide{grid-column:auto}}@media(max-width:560px){.route-decision,.memory-grid{grid-template-columns:1fr}.field{min-width:0;width:100%}}
 @keyframes spin{to{transform:rotate(360deg)}}@keyframes spin2{from{transform:rotate(22deg)}to{transform:rotate(382deg)}}@keyframes breathe{50%{transform:scale(1.08);opacity:.72}}@keyframes coreFloat{50%{transform:translateY(-8px) scale(1.025)}}@keyframes blink{50%{opacity:.25}}@keyframes toast{from{transform:translateY(8px);opacity:0}}@media(max-width:1200px){.shell{grid-template-columns:86px 1fr}.brand div:last-child,.nav span:not(.icon),.tiny-card{display:none}.sidebar{padding-left:12px;padding-right:12px}.brand{justify-content:center}.nav a,.nav button{justify-content:center}.hero-grid{grid-template-columns:1fr}.stack{grid-template-columns:1fr 1fr}.metric-strip{grid-template-columns:repeat(3,1fr)}.lower{grid-template-columns:1fr 1fr}.activity-panel{grid-column:1/-1}}@media(max-width:760px){.shell{display:block}.sidebar{position:relative;height:auto;display:block;padding:10px}.brand{display:none}.nav{display:flex;overflow:auto}.nav a,.nav button{min-width:58px}.main{padding:12px}.topbar{grid-template-columns:1fr 1fr}.command{grid-column:1/-1}.top-chip{min-width:0}.hero-grid{display:block}.stack{display:grid;grid-template-columns:1fr;margin-top:12px}.core-panel{min-height:470px}.core-stage{height:330px}.provider-node{min-width:86px}.provider-node.n1,.provider-node.n3{left:2%}.provider-node.n2,.provider-node.n4{right:2%}.core-kpis{grid-template-columns:1fr 1fr}.metric-strip{grid-template-columns:1fr 1fr}.lower{grid-template-columns:1fr}.activity-panel{grid-column:auto}.footer{display:block;line-height:1.6}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;scroll-behavior:auto!important}.ambient video,.core-video{display:none!important}}
-</style>
+.core-stage:before,.fallback-core,.ring{animation:none!important}.core-stage[data-active="true"] .fallback-core{filter:brightness(1.5);transform:scale(1.08)}.fallback-core{transition:transform .3s,filter .3s}</style>
 </head>
 <body>
 <div class="ambient"><video autoplay muted loop playsinline poster="/bg-poster.png"><source src="/bg-loop.webm" type="video/webm"><source src="/bg-loop.mp4" type="video/mp4"></video></div>
 <div class="gridlines"></div>
 <div class="shell">
   <aside class="sidebar">
-    <div class="brand"><div class="mark">J</div><div><b>JARVIS</b><small>V24 COMMAND CENTER</small></div></div>
+    <div class="brand"><div class="mark">J</div><div><b>JARVIS</b><small>V25 COMMAND CENTER</small></div></div>
     <nav class="nav">
       <button class="active" data-view="overview" onclick="showView('overview',this)"><span class="icon">◉</span><span>Command Center</span></button>
       <button data-view="projects" onclick="showView('projects',this)"><span class="icon">▣</span><span>Project Worker</span></button>
@@ -60,7 +60,7 @@ button,input,select{font:inherit}.ambient{position:fixed;inset:0;z-index:-3;over
       <button data-view="approvals" onclick="showView('approvals',this)"><span class="icon">✓</span><span>Approvals</span></button>
       <button data-view="memory" onclick="showView('memory',this)"><span class="icon">◫</span><span>Memory & Logs</span></button>
       <a href="/dashboard-classic"><span class="icon">⌁</span><span>Classic Cockpit</span></a>
-      <a href="/voice-live.html"><span class="icon">◍</span><span>Live Voice</span></a>
+      <a href="/voice"><span class="icon">◍</span><span>Push to Talk</span></a>
       <button onclick="refreshAll(true)"><span class="icon">↻</span><span>Refresh systems</span></button>
       <button onclick="setSessionToken()"><span class="icon">⌾</span><span>API Session</span></button>
     </nav>
@@ -77,7 +77,7 @@ button,input,select{font:inherit}.ambient{position:fixed;inset:0;z-index:-3;over
       <form class="command" onsubmit="runAutopilot(event)"><input id="goalInput" autocomplete="off" placeholder="Tell Jarvis what you want done… e.g. Get Email Agent production ready"><button id="runBtn" type="submit">RUN AUTOPILOT</button></form>
       <div class="top-chip"><small>System</small><b id="systemState">INITIALIZING</b></div>
       <div class="top-chip"><small>Active brain</small><b id="activeBrain">GEMINI</b></div>
-      <div class="top-chip voice-btn" onclick="openVoiceConsole()"><small>Voice link</small><b>LAUNCH LIVE DUPLEX MIC</b></div>
+      <div class="top-chip voice-btn" onclick="openVoiceConsole()"><small>Voice link</small><b>PUSH TO TALK</b></div>
     </div>
 
     <section id="view-overview" class="view active">
@@ -86,7 +86,7 @@ button,input,select{font:inherit}.ambient{position:fixed;inset:0;z-index:-3;over
         <div class="panel-head"><b>Jarvis Neural Core</b><span id="authorityText">Routing • Memory • Policy • Verification</span></div>
         <div class="core-stage">
           <div class="fallback-core" aria-hidden="true"></div>
-          <video id="coreVideo" class="core-video" autoplay muted loop playsinline poster="/orb-poster.png"><source src="/command-center-loop.webm" type="video/webm"><source src="/command-center-loop.mp4" type="video/mp4"><source src="/orb-loop.webm" type="video/webm"><source src="/orb-loop.mp4" type="video/mp4"></video>
+          <div id="activityState" role="status" style="z-index:2;background:#101b30;padding:12px;border-radius:12px">Connecting…</div>
           <div class="ring r3"><i></i></div><div class="ring r2"><i></i></div><div class="ring r1"><i></i></div>
           <div id="nodeGemini" class="provider-node n1"><b>GEMINI</b><small>Main brain</small></div>
           <div id="nodeOpenai" class="provider-node n2"><b>OPENAI</b><small>Deep reasoning</small></div>
@@ -164,7 +164,7 @@ button,input,select{font:inherit}.ambient{position:fixed;inset:0;z-index:-3;over
       </div>
     </section>
 
-    <div class="footer"><div><strong>JARVIS V24</strong> — one control plane, four specialized intelligence engines, bounded authority.</div><div><a href="/v1/brain/status" target="_blank">Brain status</a> · <a href="/v1/orchestrator/targets" target="_blank">Targets</a> · <a href="/docs" target="_blank">API docs</a></div></div>
+    <div class="footer"><div><strong>JARVIS V25</strong> — one control plane, four specialized intelligence engines, bounded authority.</div><div><a href="/v1/brain/status" target="_blank">Brain status</a> · <a href="/v1/orchestrator/targets" target="_blank">Targets</a> · <a href="/docs" target="_blank">API docs</a></div></div>
   </main>
 </div>
 <div id="toast" class="toast"></div>
@@ -212,11 +212,15 @@ async function testRoute(){const text=$('routeText').value.trim();if(!text)retur
 async function launchAutopilot(){const goal=$('autopilotGoal').value.trim();if(!goal)return toast('Enter an Autopilot goal first.',true);const btn=$('autopilotBtn');btn.disabled=true;btn.textContent='RUNNING…';setResult('autopilotResult','Jarvis is creating the durable plan and executing safe steps…');try{const result=await api('/v1/orchestrator/autopilot',{method:'POST',body:JSON.stringify({goal,max_steps:Number($('autopilotSteps').value||12),model:'auto',assistant_profile:'general'})});setResult('autopilotResult',result);toast(`Autopilot ${result.status||'completed step batch'}`);await refreshAll(false)}catch(e){setResult('autopilotResult','ERROR: '+e.message);toast(e.message,true)}finally{btn.disabled=false;btn.textContent='START AUTOPILOT'}}
 async function decideApproval(id,confirmed,action){if(confirmed&&!window.confirm(`Approve the exact pending ${action} action? Jarvis will execute only the server-held arguments for this ticket.`))return;try{const result=await api('/v1/agent/confirm',{method:'POST',body:JSON.stringify({confirmation_id:id,confirmed})});toast(confirmed?'Approved action executed/resumed.':'Pending action cancelled.');if(confirmed&&result&&result.message&&result.message.content)toast(result.message.content.slice(0,260));await refreshAll(false)}catch(e){toast(e.message,true)}}
 async function loadConversations(){const root=$('conversationList');if(!root)return;try{const rows=await api('/v1/conversations');clear(root);(rows||[]).slice(0,20).forEach(c=>{const row=tag('div','detail-row');row.append(tag('span','',c.title||`Conversation ${c.id}`),tag('b','',`${c.assistant_profile||'general'} • ${c.model||'auto'}`));root.append(row)});if(!(rows||[]).length)root.append(tag('div','empty','No saved conversations.'))}catch(e){clear(root);root.append(tag('div','empty','Conversation list unavailable: '+e.message))}}
-function openVoiceConsole(){window.open('/voice-live.html','JarvisVoiceConsole','width=540,height=760,resizable=yes,scrollbars=yes')}
+function openVoiceConsole(){window.open('/voice','JarvisVoiceConsole','width=540,height=760,resizable=yes,scrollbars=yes')}
 window.openVoiceConsole=openVoiceConsole;
 function scheduleLiveRefresh(){clearTimeout(state.eventRefreshTimer);state.eventRefreshTimer=setTimeout(()=>refreshAll(false),180)}
 function startTelemetryStream(){if(state.eventSource){state.eventSource.close();state.eventSource=null}if(sessionToken())return;try{const es=new EventSource('/v1/telemetry/events');state.eventSource=es;es.addEventListener('jarvis',scheduleLiveRefresh);es.onerror=()=>{es.close();if(state.eventSource===es)state.eventSource=null}}catch(_){state.eventSource=null}}
 refreshAll(false);startTelemetryStream();state.refreshTimer=setInterval(()=>refreshAll(false),15000);document.addEventListener('visibilitychange',()=>{if(!document.hidden){refreshAll(false);if(!state.eventSource)startTelemetryStream()}});window.addEventListener('beforeunload',()=>{if(state.eventSource)state.eventSource.close()});
 </script>
-</body>
+<script>
+let activitySequence=0;
+async function updateActivity(){try{const r=await fetch('/v1/activity?after='+activitySequence,{headers:sessionToken()?{Authorization:'Bearer '+sessionToken()}:{}});if(!r.ok)throw Error();const a=await r.json();const fresh=a.sequence>activitySequence;activitySequence=a.sequence;document.getElementById('activityState').textContent=a.state+' · '+(a.latest?.name||'No events yet');document.querySelector('.core-stage').dataset.active=String(fresh);setTimeout(()=>document.querySelector('.core-stage').dataset.active='false',700)}catch(_){document.getElementById('activityState').textContent='Disconnected';document.querySelector('.core-stage').dataset.active='false'}}
+updateActivity();setInterval(()=>{if(!document.hidden)updateActivity()},2000);
+</script></body>
 </html>

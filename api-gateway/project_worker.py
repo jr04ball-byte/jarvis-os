@@ -196,8 +196,12 @@ def run_command(command: list[str], workspace: str, timeout: int = 120) -> Comma
     root = _safe_resolve(workspace)
     started = time.time()
     try:
+        # Windows searches the parent process executable directory before PATH.
+        # Pin the discovered command so verification uses the selected environment.
+        executable = shutil.which(command[0]) if command else None
+        resolved_command = [executable, *command[1:]] if executable else command
         proc = subprocess.run(
-            command,
+            resolved_command,
             cwd=str(root),
             text=True,
             capture_output=True,

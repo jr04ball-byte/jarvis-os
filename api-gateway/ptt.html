@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Jarvis V25 Â· Push to talk</title>
+<style>body{background:#091321;color:#e7f5ff;font:17px system-ui;max-width:720px;margin:40px auto;padding:20px}button,input,textarea{font:inherit;background:#14273d;color:inherit;border:1px solid #5fbad0;border-radius:12px;padding:14px;box-sizing:border-box}input,textarea{width:100%;margin:12px 0}button{touch-action:none;cursor:pointer}#talk{width:100%}pre{white-space:pre-wrap}a{color:#80ddff}</style>
+<h1>Push to talk</h1><p>Hold to dictate, then review and send. Replies appear as text. Speech recognition availability and processing depend on your browser.</p>
+<input id="token" type="password" placeholder="API token" aria-label="API token">
+<button id="talk">Hold to dictate (or hold Space)</button><p id="status" role="status">Microphone off</p>
+<textarea id="text" rows="5" aria-label="Message" placeholder="Type or dictate a message"></textarea>
+<button id="send">Send</button><div id="approval" hidden><p>Review the proposed action above before approving.</p><button id="approve">Approve action</button><button id="cancel">Cancel action</button></div><pre id="reply" aria-live="polite"></pre><a href="/companion">Companion and action approvals</a>
+<script>
+const talk=document.getElementById('talk'),status=document.getElementById('status'),input=document.getElementById('text'),token=document.getElementById('token'),reply=document.getElementById('reply');
+token.value=sessionStorage.getItem('jarvisApiToken')||sessionStorage.getItem('ai_api_token')||'';
+token.onchange=()=>sessionStorage.setItem('jarvisApiToken',token.value);
+const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+let recognition=null,held=false,base='';
+function start(){if(held||recognition||!Recognition)return;held=true;base=input.value;recognition=new Recognition();recognition.continuous=true;recognition.interimResults=true;recognition.onresult=e=>{input.value=base+' '+Array.from(e.results).map(r=>r[0].transcript).join(' ')};recognition.onerror=e=>{status.textContent='Recognition: '+e.error;held=false};recognition.onend=()=>{recognition=null;held=false;status.textContent='Microphone off Â· review your message'};try{recognition.start();status.textContent='Listening while held'}catch(e){recognition=null;held=false;status.textContent=e.message}}
+function stop(cancel=false){held=false;if(recognition){cancel?recognition.abort():recognition.stop()}status.textContent='Microphone off'}
+talk.onpointerdown=e=>{e.preventDefault();talk.setPointerCapture(e.pointerId);start()};talk.onpointerup=()=>stop();talk.onpointercancel=()=>stop(true);talk.onlostpointercapture=()=>{if(held)stop(true)};
+talk.onkeydown=e=>{if(e.code==='Space'){e.preventDefault();if(!e.repeat)start()}};talk.onkeyup=e=>{if(e.code==='Space'){e.preventDefault();stop()}};
+window.addEventListener('blur',()=>stop(true));document.addEventListener('visibilitychange',()=>{if(document.hidden)stop(true)});window.addEventListener('pagehide',()=>stop(true));
+if(!Recognition){talk.disabled=true;status.textContent='Speech recognition unavailable; type below.'}
+let pending=null;
+function showResponse(data){reply.textContent=data.message?.content||JSON.stringify(data,null,2);pending=data.confirmation||null;document.getElementById('approval').hidden=!pending}
+async function confirmAction(confirmed){if(!pending)return;const ticket=pending.confirmation_id;pending=null;document.getElementById('approval').hidden=true;try{const r=await fetch('/v1/companion/confirm',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token.value},body:JSON.stringify({confirmation_id:ticket,confirmed})});const data=await r.json();if(!r.ok)throw Error(data.detail||'Confirmation failed');showResponse(data)}catch(e){reply.textContent=e.message}}
+document.getElementById('approve').onclick=()=>confirmAction(true);document.getElementById('cancel').onclick=()=>confirmAction(false);
+document.getElementById('send').onclick=async()=>{stop();const text=input.value.trim();if(!text)return;const button=document.getElementById('send');button.disabled=true;reply.textContent='Workingâ€¦';try{const r=await fetch('/v1/companion/chat',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token.value},body:JSON.stringify({model:'auto',messages:[{role:'user',content:text}]})});const data=await r.json();if(!r.ok)throw Error(data.detail||'Request failed');showResponse(data)}catch(e){reply.textContent=e.message}finally{button.disabled=false}};
+</script></html>

@@ -26,7 +26,7 @@ jobs:
       - name: Run Python tests
         run: pytest -q
       - name: Run voice engine tests
-        run: node --test tests/voice-engine.test.js
+        run: node --test tests/voice-engine.test.js tests/ptt.test.js
       - name: Compile Python sources
         run: python -m compileall -q api-gateway tests
       - name: Generated reports are current

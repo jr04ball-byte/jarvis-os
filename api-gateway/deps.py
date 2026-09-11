@@ -23,7 +23,7 @@ from store import ConversationDB, DocumentRAG, PerformanceMonitor
 logger = logging.getLogger(__name__)
 
 
-APP_VERSION = "24.0.0-rc1"
+APP_VERSION = "25.0.0-rc1"
 
 
 def data_dir() -> Path:

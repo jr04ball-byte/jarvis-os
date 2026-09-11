@@ -6,6 +6,7 @@ Business logic belongs in services/routes/providers/worker modules.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import secrets
@@ -24,6 +25,7 @@ try:
 except ImportError:
     pass
 
+from activity import ActivityCore
 from brains import router as brain_router  # noqa: E402
 from deps import (  # noqa: E402 - env bootstrap must happen first
     AI_API_TOKEN,
@@ -32,15 +34,18 @@ from deps import (  # noqa: E402 - env bootstrap must happen first
     RECENT_REQUESTS,
     RateLimitExceeded,
     container,
+    data_dir,
     limiter,
 )
 from events import bus as event_bus  # noqa: E402
 from fastapi import FastAPI, Request  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from fastapi.responses import JSONResponse  # noqa: E402
+from maintenance import MaintenanceWorker
 from routes import (  # noqa: E402
     auth,
     chat,
+    companion,
     dashboard,
     health,
     projects,
@@ -71,15 +76,24 @@ async def lifespan(app: FastAPI):
     app.state.container = container
     app.state.event_bus = event_bus
     app.state.telemetry = collector
+    app.state.activity = ActivityCore(event_bus)
+    app.state.activity.start()
+    app.state.maintenance = MaintenanceWorker(data_dir(), event_bus)
+    maintenance_task = asyncio.create_task(app.state.maintenance.run())
     logger.info("Jarvis OS %s starting", APP_VERSION)
     try:
         yield
     finally:
+        app.state.maintenance.stop.set()
+        await maintenance_task
+        app.state.activity.close()
         container.close()
         logger.info("Jarvis OS %s stopped", APP_VERSION)
 
 
 async def api_auth(request: Request, call_next):
+    if request.url.path in {'/v1/deepgram-speak', '/v1/deepgram-speak-stream', '/v1/gemini/live-token'}:
+        return JSONResponse(status_code=410, content={'detail': 'V25 supports push-to-talk input and text output only'})
     protected = (
         request.url.path.startswith("/v1/")
         or request.url.path.startswith("/gmail/")
@@ -147,6 +161,7 @@ def create_app() -> FastAPI:
 
     app.include_router(brain_router)
     app.include_router(telemetry.router)
+    app.include_router(companion.router)
     app.include_router(auth.router)
     app.include_router(providers.router)
     app.include_router(projects.router)

@@ -30,14 +30,14 @@ struct ContentView: View {
     @State private var reply = ""
     @State private var busy = false
     @AppStorage("aiConversationId") private var conversationId: Int = 0
-    @AppStorage("aiApiToken") private var apiToken: String = ""
+    @State private var apiToken: String = ""
     private let baseURL = URL(string: "http://YOUR-PC-IP:8000")!
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 16) {
                 ScrollView { Text(reply.isEmpty ? "Ask your AI anything." : reply).frame(maxWidth: .infinity, alignment: .leading) }
-                SecureField("API token (optional)", text: $apiToken)
+                SecureField("Required API token", text: $apiToken)
                     .textFieldStyle(.roundedBorder)
                 HStack {
                     TextField("Ask your AI…", text: $text, axis: .vertical)
@@ -89,7 +89,7 @@ struct ContentView: View {
         let prompt = text.trimmingCharacters(in: .whitespacesAndNewlines); text = ""
         do {
             let cid = try await ensureConversation()
-            var req = URLRequest(url: baseURL.appendingPathComponent("v1/agent/chat"))
+            var req = URLRequest(url: baseURL.appendingPathComponent("v1/companion/chat"))
             req.httpMethod = "POST"
             headers(json: true).forEach { req.setValue($1, forHTTPHeaderField: $0) }
             let body = AgentRequest(model: "auto", messages: [ChatMessage(role: "user", content: prompt)], assistant_profile: "general", conversation_id: cid)

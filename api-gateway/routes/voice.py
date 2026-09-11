@@ -129,20 +129,20 @@ async def deepgram_speak_stream(req: DeepgramSpeakRequest):
 
 @router.get("/v1/deepgram-status")
 async def deepgram_status():
-    return {"configured": bool(DEEPGRAM_API_KEY), "stt_model": DEEPGRAM_STT_MODEL, "tts_model": DEEPGRAM_TTS_MODEL, "mode": "deepgram-stt-tts + local-ollama-brain"}
+    return {"configured": bool(DEEPGRAM_API_KEY), "stt_model": DEEPGRAM_STT_MODEL, "audio_output": False, "mode": "push_to_talk"}
 
 
 @router.get("/voice", include_in_schema=False)
 async def voice_ui():
     """Browser voice console: headset microphone -> AI -> headset speech."""
-    return FileResponse(os.path.join(str(GATEWAY_DIR), "voice.html"), media_type="text/html")
+    return FileResponse(os.path.join(str(GATEWAY_DIR), "ptt.html"), media_type="text/html")
 
 
 @router.get("/voice-live", include_in_schema=False)
 @router.get("/voice-live.html", include_in_schema=False)
 async def voice_live_ui():
     """Gemini Live full-duplex voice console with tool calling."""
-    return FileResponse(os.path.join(str(GATEWAY_DIR), "voice-live.html"), media_type="text/html")
+    return FileResponse(os.path.join(str(GATEWAY_DIR), "ptt.html"), media_type="text/html")
 
 
 @router.get("/voice-engine.js", include_in_schema=False)
