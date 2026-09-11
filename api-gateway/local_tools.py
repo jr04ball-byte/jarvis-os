@@ -193,14 +193,19 @@ def _scan_uncached() -> dict[str, Any]:
         },
     }
 
-_CACHE: dict[str, Any] = {"ts": 0.0, "data": None}
+_CACHE: dict[str, Any] = {"ts": 0.0, "data": None, "platform": None}
 _CACHE_TTL = 300.0  # Dashboard polls frequently; don't respawn probes each time.
 
 def scan_local_tools() -> dict[str, Any]:
     now = time.monotonic()
-    if _CACHE["data"] is not None and (now - _CACHE["ts"]) < _CACHE_TTL:
+    # The platform is part of the cache key: tests (and exotic runtimes) may
+    # patch platform.system(), and a stale cross-platform entry would lie.
+    current_platform = platform.system()
+    if (_CACHE["data"] is not None and (now - _CACHE["ts"]) < _CACHE_TTL
+            and _CACHE["platform"] == current_platform):
         return _CACHE["data"]
     data = _scan_uncached()
     _CACHE["ts"] = now
     _CACHE["data"] = data
+    _CACHE["platform"] = current_platform
     return data
