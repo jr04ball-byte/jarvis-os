@@ -10,4 +10,4 @@ def test_dashboard_launches_ptt():
     text = (ROOT / 'api-gateway/dashboard.html').read_text(encoding='utf-8')
     assert 'openVoiceConsole' in text
     assert '/voice-live.html' not in text
-    assert 'PUSH TO TALK' in text
+    assert 'Push to talk' in text

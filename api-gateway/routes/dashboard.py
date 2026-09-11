@@ -18,7 +18,7 @@ router = APIRouter()
 @router.get("/dashboard", include_in_schema=False)
 @router.get("/dashboard.html", include_in_schema=False)
 async def dashboard_ui():
-    """Primary V23 Jarvis Command Center."""
+    """Primary V25 neon dashboard matching the user-supplied visual reference."""
     return FileResponse(os.path.join(str(GATEWAY_DIR), "dashboard.html"), media_type="text/html")
 
 
@@ -29,30 +29,21 @@ async def dashboard_classic_ui():
     return FileResponse(os.path.join(str(GATEWAY_DIR), "dashboard-classic.html"), media_type="text/html")
 
 
-@router.get("/orb-loop.webm", include_in_schema=False)
-@router.get("/orb-loop.mp4", include_in_schema=False)
-@router.get("/orb-poster.png", include_in_schema=False)
-@router.get("/bg-loop.webm", include_in_schema=False)
-@router.get("/bg-loop.mp4", include_in_schema=False)
-@router.get("/bg-poster.png", include_in_schema=False)
-@router.get("/command-center-loop.webm", include_in_schema=False)
-@router.get("/command-center-loop.mp4", include_in_schema=False)
-@router.get("/command-center-poster.png", include_in_schema=False)
-async def blender_dashboard_asset(request: Request):
-    """Serve Blender-baked dashboard motion assets without exposing arbitrary files."""
-    name = request.url.path.lstrip("/")
-    allowed = {
-        "orb-loop.webm", "orb-loop.mp4", "orb-poster.png",
-        "bg-loop.webm", "bg-loop.mp4", "bg-poster.png",
-        "command-center-loop.webm", "command-center-loop.mp4", "command-center-poster.png",
-    }
-    if name not in allowed:
-        raise HTTPException(404, "asset not found")
-    base = os.path.join(str(GATEWAY_DIR), "assets", name)
-    if not os.path.isfile(base):
-        raise HTTPException(404, "Blender dashboard asset not baked yet")
-    media = "video/webm" if name.endswith(".webm") else ("video/mp4" if name.endswith(".mp4") else "image/png")
-    return FileResponse(base, media_type=media, headers={"Cache-Control": "public, max-age=3600"})
+@router.get('/dashboard-activity.js', include_in_schema=False)
+async def dashboard_activity_js():
+    return FileResponse(GATEWAY_DIR / 'dashboard-activity.js', media_type='application/javascript')
+
+
+@router.get('/neon-neural-v25.png', include_in_schema=False)
+@router.get('/neon-neural-v25.mp4', include_in_schema=False)
+async def neon_dashboard_asset(request: Request):
+    name = request.url.path.lstrip('/')
+    if name not in {'neon-neural-v25.png', 'neon-neural-v25.mp4'}:
+        raise HTTPException(404, 'Asset not found')
+    path = GATEWAY_DIR / 'assets' / name
+    if not path.is_file():
+        raise HTTPException(404, 'Asset not rendered')
+    return FileResponse(path, media_type='video/mp4' if name.endswith('.mp4') else 'image/png')
 
 
 @router.get("/companion", include_in_schema=False)

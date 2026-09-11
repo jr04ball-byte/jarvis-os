@@ -66,7 +66,7 @@ def test_dashboard_uses_engine_and_streaming_turn():
     assert 'JarvisVoiceConsole' in dash
     assert 'openVoiceConsole' in dash
     assert "'/voice'" in dash
-    assert 'PUSH TO TALK' in dash
+    assert 'Push to talk' in dash
 
 
 def test_voice_console_uses_engine_and_turn():

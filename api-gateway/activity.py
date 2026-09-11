@@ -1,6 +1,7 @@
 """Bounded, redacted activity projection of actual gateway events."""
 import threading
 import time
+import uuid
 from collections import Counter, deque
 
 from events import Event
@@ -13,6 +14,7 @@ class ActivityCore:
         self.history = deque(maxlen=200)
         self.counts = Counter()
         self.sequence = 0
+        self.stream_id = uuid.uuid4().hex
 
     def start(self):
         self.bus.subscribe(Event, self.record)
@@ -40,12 +42,16 @@ class ActivityCore:
         with self.lock:
             self.sequence += 1
             self.counts[name] += 1
-            self.history.append(dict(id=self.sequence, name=name, state=state, ts=event.ts))
+            record = dict(id=self.sequence, name=name, state=state, ts=event.ts)
+            provider = getattr(event, 'provider', '')
+            if provider in {'gemini', 'openai', 'ollama', 'opencode'}:
+                record['provider'] = provider
+            self.history.append(record)
 
     def snapshot(self, after=0):
         with self.lock:
             latest = self.history[-1] if self.history else None
-            return dict(sequence=self.sequence,
+            return dict(sequence=self.sequence, stream_id=self.stream_id,
                         state=latest['state'] if latest and time.time()-latest['ts'] < 8 else 'idle',
                         latest=latest, counts=dict(self.counts),
                         events=[dict(e) for e in self.history if e['id'] > after],
