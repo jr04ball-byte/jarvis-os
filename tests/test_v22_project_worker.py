@@ -37,10 +37,14 @@ def test_pnpm_lint_uses_lint_script_not_stale_loop_var(tmp_path):
 
 def test_inspection_does_not_read_env(tmp_path):
     (tmp_path / '.env').write_text('TOP_SECRET=abc')
+    (tmp_path / 'google_tokens.enc').write_text('ENCRYPTED_BLOB')
+    (tmp_path / '.token_key').write_text('ENCRYPTION_KEY')
     (tmp_path / 'README.md').write_text('hello')
     subprocess.run(['git','init'], cwd=tmp_path, capture_output=True)
     snap = inspect_workspace(str(tmp_path))
     assert '.env' not in snap['files']
+    assert 'google_tokens.enc' not in snap['files']
+    assert '.token_key' not in snap['files']
     assert snap['files']['README.md'] == 'hello'
 
 

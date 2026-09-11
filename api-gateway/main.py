@@ -3,6 +3,7 @@
 # so Jarvis remains protected instead of failing to start.
 import logging
 import os
+import secrets
 import time
 
 from deps import (
@@ -90,7 +91,8 @@ app.include_router(health.router)
 async def api_auth(request: Request, call_next):
     if AI_REQUIRE_AUTH and (request.url.path.startswith("/v1/") or request.url.path.startswith("/gmail/") or request.url.path.startswith("/calendar/") or request.url.path.startswith("/auth/google/")):
         supplied = request.headers.get("authorization", "")
-        if not AI_API_TOKEN or supplied != f"Bearer {AI_API_TOKEN}":
+        expected = f"Bearer {AI_API_TOKEN}" if AI_API_TOKEN else ""
+        if not expected or not secrets.compare_digest(supplied, expected):
             return JSONResponse(status_code=401, content={"detail":"AI System authentication required"})
     return await call_next(request)
 
