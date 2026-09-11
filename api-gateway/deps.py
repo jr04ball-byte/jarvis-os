@@ -208,7 +208,7 @@ limiter = Limiter(key_func=get_remote_address)
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://ollama:11434")
 
 
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "auto")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.1:8b")
 
 
 AI_API_TOKEN = os.getenv("AI_API_TOKEN", "")

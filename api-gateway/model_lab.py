@@ -66,10 +66,9 @@ async def overview() -> dict[str, Any]:
     ollama, lm = await ollama_inventory(), await lmstudio_inventory()
     return {"timestamp": time.time(), "ollama": ollama, "lmstudio": lm,
             "targets": [
-                {"name":"Gemma 3 4B", "query":"gemma 3 4b gguf", "role":"fast general / vision candidate", "target_vram_mb":3000},
-                {"name":"Qwen 3.5 4B", "query":"qwen3.5 4b gguf", "role":"fast general candidate", "target_vram_mb":3200},
-                {"name":"Qwen 3.5 9B", "query":"qwen3.5 9b gguf", "role":"deep reasoning", "target_vram_mb":7000},
-                {"name":"Qwen Coder 3B", "query":"qwen coder 3b gguf", "role":"coding specialist", "target_vram_mb":3000},
+                {"name":"Gemma 2 9B", "query":"gemma2 9b", "role":"fast general", "target_vram_mb":5000},
+                {"name":"Llama 3.1 8B", "query":"llama3.1 8b", "role":"tool-capable local default", "target_vram_mb":5000},
+                {"name":"Mistral Nemo 12B", "query":"mistral-nemo 12b", "role":"deep reasoning", "target_vram_mb":8000},
             ]}
 
 async def lm_load(model: str, context_length: int = 4096, gpu: str = "auto", ttl: int = 1800) -> dict[str, Any]:

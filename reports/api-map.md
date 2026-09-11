@@ -1,7 +1,7 @@
 # Jarvis OS — API Map (generated)
 
 **FastAPI application version:** `25.0.0-rc1`  
-**Registered API/UI routes:** **101**
+**Registered API/UI routes:** **100**
 
 | Methods | Path | Name |
 |---|---|---|
@@ -16,8 +16,6 @@
 | GET | `/companion-sw.js` | `companion_sw` |
 | GET | `/dashboard` | `dashboard_ui` |
 | GET | `/dashboard-activity.js` | `dashboard_activity_js` |
-| GET | `/dashboard-classic` | `dashboard_classic_ui` |
-| GET | `/dashboard-classic.html` | `dashboard_classic_ui` |
 | GET | `/dashboard.html` | `dashboard_ui` |
 | GET | `/gmail/messages` | `gmail_messages` |
 | GET | `/health` | `health_check` |
@@ -101,6 +99,7 @@
 | GET | `/v1/tools` | `list_tools` |
 | POST | `/v1/tools/execute` | `execute_tool` |
 | GET | `/v1/tools/local` | `local_tools_inventory` |
+| POST | `/v1/voice/transcribe` | `transcribe_voice` |
 | POST | `/v1/voice/turn` | `voice_turn` |
 | GET | `/voice` | `voice_ui` |
 | GET | `/voice-engine.js` | `voice_engine_js` |

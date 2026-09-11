@@ -1,8 +1,11 @@
 """V24 P2: voice routes (moved verbatim from main.py)."""
 
 import asyncio
+import base64
+import io
 import logging
 import os
+import wave
 from pathlib import Path
 
 import httpx
@@ -15,7 +18,7 @@ from deps import (
     db,
     limiter,
 )
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
 from schemas import ChatRequest, DeepgramSpeakRequest, VoiceTurnRequest
 from services import (
@@ -130,6 +133,52 @@ async def deepgram_speak_stream(req: DeepgramSpeakRequest):
 @router.get("/v1/deepgram-status")
 async def deepgram_status():
     return {"configured": bool(DEEPGRAM_API_KEY), "stt_model": DEEPGRAM_STT_MODEL, "audio_output": False, "mode": "push_to_talk"}
+
+
+@router.post("/v1/voice/transcribe")
+@limiter.limit("30/minute")
+async def transcribe_voice(request: Request, audio: UploadFile = File(...)):
+    """Transcribe one bounded push-to-talk recording with the configured Gemini model."""
+    api_key = (os.getenv("GEMINI_API_KEY") or "").strip()
+    if not api_key:
+        raise HTTPException(503, "Gemini is not configured for transcription")
+    payload = await audio.read(20 * 1024 * 1024 + 1)
+    if not payload:
+        raise HTTPException(400, "audio recording is empty")
+    if len(payload) > 20 * 1024 * 1024:
+        raise HTTPException(413, "audio recording is too large")
+    mime = (audio.content_type or "audio/webm").split(";", 1)[0]
+    if mime not in {"audio/webm", "audio/ogg", "audio/wav", "audio/x-wav", "audio/mp4", "audio/mpeg"}:
+        raise HTTPException(415, f"unsupported audio type: {mime}")
+    if mime in {"audio/wav", "audio/x-wav"}:
+        try:
+            with wave.open(io.BytesIO(payload), "rb") as recording:
+                frames = recording.readframes(recording.getnframes())
+                width = recording.getsampwidth()
+            if width == 2 and frames:
+                samples = memoryview(frames).cast("h")
+                rms = (sum(int(sample) ** 2 for sample in samples) / len(samples)) ** 0.5 / 32768
+                if rms < 0.004:
+                    return {"transcript": ""}
+        except (wave.Error, ValueError):
+            raise HTTPException(400, "invalid WAV recording")
+    model = (os.getenv("GEMINI_MODEL") or "gemini-3.5-flash").strip()
+    body = {"contents": [{"parts": [
+        {"text": "Transcribe only clearly audible human speech in this recording. If there is silence, noise, music, or no intelligible speech, return exactly [NO_SPEECH]. Otherwise return only the spoken words with normal punctuation. Never invent, infer, or read these instructions aloud."},
+        {"inline_data": {"mime_type": mime, "data": base64.b64encode(payload).decode("ascii")}},
+    ]}]}
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+    async with httpx.AsyncClient(timeout=90.0) as client:
+        response = await client.post(url, headers={"x-goog-api-key": api_key, "Content-Type": "application/json"}, json=body)
+    if response.status_code != 200:
+        logger.warning("Gemini transcription failed: %s", response.text[:500])
+        raise HTTPException(502, "speech transcription failed")
+    data = response.json()
+    parts = (((data.get("candidates") or [{}])[0].get("content") or {}).get("parts") or [])
+    transcript = "".join(str(part.get("text") or "") for part in parts).strip()
+    if transcript.upper().strip(" .") in {"[NO_SPEECH]", "NO_SPEECH", "NO SPEECH"}:
+        transcript = ""
+    return {"transcript": transcript}
 
 
 @router.get("/voice", include_in_schema=False)

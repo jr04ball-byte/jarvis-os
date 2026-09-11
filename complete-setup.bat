@@ -72,7 +72,7 @@ echo.
 echo [6/6] Downloading AI model (Llama 3.1 8B - ~5GB)...
 echo This will take 5-15 minutes depending on your internet speed.
 echo.
-docker exec -it ollama ollama pull qwen3.5:9b
+docker exec -it ollama ollama pull llama3.1:8b
 
 echo.
 echo ================================================================
@@ -88,7 +88,7 @@ echo Opening chat interface in your browser...
 start http://localhost:3000
 echo.
 echo Additional models you can download:
-echo   docker exec -it ollama ollama pull qwen3.5:9b
+echo   docker exec -it ollama ollama pull llama3.1:8b
 echo   docker exec -it ollama ollama pull mistral:7b
 echo   docker exec -it ollama ollama pull deepseek-coder:6.7b
 echo.
@@ -100,3 +100,4 @@ echo   docker-compose start
 echo.
 echo ================================================================
 pause
+

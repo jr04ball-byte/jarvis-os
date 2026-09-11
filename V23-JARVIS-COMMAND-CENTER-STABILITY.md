@@ -15,15 +15,11 @@ V23 turns the V22.2 self-correcting Project Worker into a more production-orient
 5. **Approvals** — review redacted sensitive actions and explicitly approve or cancel them.
 6. **Memory & Logs** — inspect memory counts, conversation history, and safe request telemetry without exposing credentials.
 
-The classic cockpit remains available at `/dashboard-classic`, and the earlier God’s Eye interface remains available at `/godseye`.
+V25 removes the earlier overhead command-center interface and its legacy media routes. `/dashboard` is the sole command-center experience.
 
-### Animated Blender command-center pipeline
+### V25 visual replacement
 
-V23 includes `tools/blender_command_center_bake.py`, a Blender background-build script for the dashboard centerpiece. It builds a nested emissive AI core, three mechanical rotating rings, provider nodes, energy spines, lighting, camera movement, and glow/compositing, then exports browser-ready motion assets.
-
-Run `BAKE-JARVIS-DASHBOARD.bat` on a Windows machine with Blender installed. The batch file discovers common Blender installations and invokes the bake script. Generated assets are written into `api-gateway/assets/` and the dashboard automatically uses them.
-
-The release already contains validated animated WebM/MP4/poster fallback assets so the Command Center moves immediately. The richer Blender scene itself was not rendered in the build environment because a Blender binary / `bpy` runtime is not installed there; the bake script is syntax-checked and is included for the Windows build.
+V25 replaced the V23 overhead command-center composition and removed its bake scripts and media. The current editable scene is `api-gateway/assets/jarvis-neon-v25.blend`; `tools/blender_neon_v25.py` builds the neural centerpiece used by `/dashboard`.
 
 ### Multi-brain reliability
 

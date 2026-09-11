@@ -22,13 +22,6 @@ async def dashboard_ui():
     return FileResponse(os.path.join(str(GATEWAY_DIR), "dashboard.html"), media_type="text/html")
 
 
-@router.get("/dashboard-classic", include_in_schema=False)
-@router.get("/dashboard-classic.html", include_in_schema=False)
-async def dashboard_classic_ui():
-    """Classic chat cockpit retained for compatibility."""
-    return FileResponse(os.path.join(str(GATEWAY_DIR), "dashboard-classic.html"), media_type="text/html")
-
-
 @router.get('/dashboard-activity.js', include_in_schema=False)
 async def dashboard_activity_js():
     return FileResponse(GATEWAY_DIR / 'dashboard-activity.js', media_type='application/javascript')

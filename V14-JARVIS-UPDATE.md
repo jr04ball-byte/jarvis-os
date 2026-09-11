@@ -46,4 +46,5 @@ A live Electron/Windows GUI launch cannot be executed in this Linux build enviro
 
 
 ## Qwen 3.5 9B default
-V14 now defaults to the official Ollama `qwen3.5:9b` model. The model is about 6.6 GB in Q4_K_M and supports text/image input, tools, thinking, and a 256K context window. Run `SET-QWEN35-9B.bat` once on Windows to pull it. The model remains local through Ollama.
+The current release defaults to Ollama `llama3.1:8b`. Run `SET-LLAMA31-8B.bat` once on Windows to pull it. The model remains local through Ollama.
+

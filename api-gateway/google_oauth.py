@@ -41,7 +41,8 @@ TOKEN_ENCRYPTION_KEY = os.getenv("TOKEN_ENCRYPTION_KEY", "")
 
 # If no encryption key set, derive a stable one from a local file so tokens
 # survive restarts. (Not ideal — proper key management comes later.)
-_KEY_FILE = Path(os.getenv("API_DATA_DIR", str(Path(__file__).resolve().parent / "data"))) / ".token_key"
+_TOKEN_DIR = os.getenv("GOOGLE_TOKEN_DIR") or os.getenv("API_DATA_DIR", str(Path(__file__).resolve().parent / "data"))
+_KEY_FILE = Path(_TOKEN_DIR) / ".token_key"
 
 SCOPES = [
     "openid",
@@ -67,7 +68,7 @@ class TokenStore:
     def __init__(self, data_dir: str | None = None):
         # Honor API_DATA_DIR so native runs (./data) and Docker (/app/data)
         # use the same directory as the encryption key file below.
-        self.path = Path(data_dir or os.getenv("API_DATA_DIR", str(Path(__file__).resolve().parent / "data"))) / "google_tokens.enc"
+        self.path = Path(data_dir or _TOKEN_DIR) / "google_tokens.enc"
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._fernet = self._get_fernet()
 

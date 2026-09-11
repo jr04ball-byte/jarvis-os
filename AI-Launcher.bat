@@ -78,8 +78,8 @@ echo [5] Back to main menu
 echo.
 set /p model=Enter choice (1-5):
 
-if "%model%"=="1" docker exec ollama ollama pull qwen3.5:9b
-if "%model%"=="2" docker exec ollama ollama pull qwen3.5:9b
+if "%model%"=="1" docker exec ollama ollama pull llama3.1:8b
+if "%model%"=="2" docker exec ollama ollama pull llama3.1:8b
 if "%model%"=="3" docker exec ollama ollama pull mistral:7b
 if "%model%"=="4" docker exec ollama ollama pull deepseek-coder:6.7b
 if "%model%"=="5" goto menu
@@ -113,3 +113,4 @@ echo.
 echo Goodbye!
 timeout /t 2 /nobreak >nul
 exit
+

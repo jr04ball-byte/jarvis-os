@@ -91,17 +91,21 @@ def test_primary_dashboard_uses_reference_layout_and_live_controls():
     html = (ROOT / "api-gateway" / "dashboard.html").read_text(encoding="utf-8")
     for marker in ("sidebar", "ACTIVE TASK", "CALENDAR", "neural-scene", "providerCards", "operationalPanels", "commandText"):
         assert marker in html
-    assert "dashboard-classic" in html
+    assert "dashboard-classic" not in html
 
 
-def test_blender_command_center_sources_are_shipped():
-    script = ROOT / "tools" / "blender_command_center_bake.py"
-    batch = ROOT / "BAKE-JARVIS-DASHBOARD.bat"
-    assert script.is_file()
-    assert batch.is_file()
-    source = script.read_text(encoding="utf-8")
-    assert "command-center-loop.webm" in source
-    assert "jarvis-command-center.blend" in source
+def test_only_v25_blender_sources_are_shipped():
+    assert (ROOT / "tools" / "blender_neon_v25.py").is_file()
+    assert (ROOT / "api-gateway" / "assets" / "jarvis-neon-v25.blend").is_file()
+    assert (ROOT / "api-gateway" / "assets" / "neon-neural-v25.mp4").is_file()
+    for legacy in (
+        "tools/blender_bg_bake.py",
+        "tools/blender_command_center_bake.py",
+        "tools/blender_orb_bake.py",
+        "BAKE-JARVIS-DASHBOARD.bat",
+        "api-gateway/dashboard-classic.html",
+    ):
+        assert not (ROOT / legacy).exists()
 
 
 def test_gemini_live_never_returns_permanent_api_key_in_source():
@@ -147,6 +151,8 @@ def test_fastapi_v23_smoke_and_dashboard_assets(monkeypatch):
 
     godseye = client.get("/godseye")
     assert godseye.status_code == 404
+    assert client.get("/dashboard-classic").status_code == 404
+    assert client.get("/dashboard-classic.html").status_code == 404
 
     poster = client.get("/neon-neural-v25.png")
     assert poster.status_code == 200

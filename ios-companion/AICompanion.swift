@@ -72,7 +72,7 @@ struct ContentView: View {
         headers(json: true).forEach { req.setValue($1, forHTTPHeaderField: $0) }
         req.httpBody = try JSONEncoder().encode([
             "title": "iPhone AI Chat",
-            "model": "qwen3.5:9b",
+            "model": "llama3.1:8b",
             "assistant_profile": "general"
         ])
         let (data, response) = try await URLSession.shared.data(for: req)
@@ -107,3 +107,4 @@ struct ContentView: View {
         }
     }
 }
+

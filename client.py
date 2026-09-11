@@ -19,7 +19,7 @@ class LocalAI:
         Send a chat completion request
 
         Args:
-            model: Model name (e.g., "qwen3.5:9b")
+            model: Model name (e.g., "llama3.1:8b")
             messages: List of {"role": "user/assistant", "content": "..."}
             temperature: 0.0-1.0, higher = more creative
             max_tokens: Maximum response length (default: 1024)
@@ -113,8 +113,9 @@ def main():
         print(f"Response: {response}")
     else:
         print("No models available. Please download a model first:")
-        print("  docker exec -it ollama ollama pull qwen3.5:9b")
+        print("  docker exec -it ollama ollama pull llama3.1:8b")
 
 
 if __name__ == "__main__":
     main()
+
