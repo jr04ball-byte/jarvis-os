@@ -47,6 +47,18 @@ def test_local_tool_scanner_shape(monkeypatch):
         assert item['status'] in {'ready', 'not_found'}
         assert isinstance(item['capabilities'], list)
 
+def test_scanner_cache_is_platform_aware(monkeypatch):
+    """Regression: a Linux-poisoned cache must not satisfy a Windows scan.
+    (Broke CI when an earlier test populated the cache on ubuntu.)"""
+    import local_tools
+    monkeypatch.setattr(local_tools.platform, 'system', lambda: 'Linux')
+    assert local_tools.scan_local_tools()['tools'] == []
+    monkeypatch.setattr(local_tools.platform, 'system', lambda: 'Windows')
+    result = local_tools.scan_local_tools()
+    assert result['platform'] == 'Windows'
+    names = {x['name'] for x in result['tools']}
+    assert {'Blender', 'Unreal Engine 5', 'ComfyUI', 'FFmpeg', 'Ollama', 'Python'} <= names
+
 def test_adaptive_compute_manager_has_safe_modes(monkeypatch):
     import compute_manager
     monkeypatch.setattr(compute_manager, 'gpu_stats', lambda: {
