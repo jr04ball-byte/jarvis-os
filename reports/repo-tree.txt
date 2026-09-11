@@ -1,5 +1,6 @@
 # Jarvis OS repository tree (generated)
 .
+- .env
 - .env.example
 - .github/
   - .github/workflows/
@@ -16,6 +17,7 @@
     - api-gateway/assets/neon-neural-v25.mp4
     - api-gateway/assets/neon-neural-v25.png
   - api-gateway/brains.py
+  - api-gateway/budgets.py
   - api-gateway/companion-manifest.json
   - api-gateway/companion-sw.js
   - api-gateway/companion.html
@@ -147,6 +149,7 @@
   - tests/test_auth_gate.py
   - tests/test_autofix_cycle.py
   - tests/test_brains_failover.py
+  - tests/test_budgets.py
   - tests/test_container.py
   - tests/test_events.py
   - tests/test_model_lab.py

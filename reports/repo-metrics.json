@@ -1,5 +1,5 @@
 {
-  "api_gateway_python_files": 37,
+  "api_gateway_python_files": 38,
   "app_version": "25.0.0-rc1",
   "largest_python_modules": [
     {
@@ -11,7 +11,7 @@
       "path": "api-gateway/project_worker.py"
     },
     {
-      "lines": 345,
+      "lines": 348,
       "path": "api-gateway/routes/chat.py"
     },
     {
@@ -35,12 +35,12 @@
       "path": "api-gateway/google_oauth.py"
     },
     {
-      "lines": 269,
+      "lines": 273,
       "path": "api-gateway/routes/voice.py"
     },
     {
-      "lines": 262,
-      "path": "api-gateway/routes/telemetry.py"
+      "lines": 264,
+      "path": "api-gateway/brains.py"
     }
   ],
   "local_dependency_edges": {
@@ -48,6 +48,7 @@
       "events"
     ],
     "brains": [
+      "budgets",
       "events",
       "intelligence_router"
     ],
@@ -82,6 +83,7 @@
       "google_oauth"
     ],
     "routes.chat": [
+      "budgets",
       "compute_manager",
       "deps",
       "schemas",
@@ -125,6 +127,7 @@
       "workspace_registry"
     ],
     "routes.voice": [
+      "budgets",
       "deps",
       "schemas",
       "services"
@@ -164,7 +167,7 @@
   "local_import_cycle_count": 0,
   "local_import_cycles": [],
   "main_py_lines": 185,
-  "python_test_files": 29,
+  "python_test_files": 30,
   "registered_routes": 100,
   "route_groups": {
     "activity": 1,
