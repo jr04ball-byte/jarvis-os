@@ -127,6 +127,7 @@ def test_brains_emits_selected_and_failed(monkeypatch):
 
     class FakeProvider:
         name = "fake"
+        kind = "local"
         model = "fake-model"
         configured = True
 

@@ -9,6 +9,7 @@ import wave
 from pathlib import Path
 
 import httpx
+from budgets import budget as token_budget
 from deps import (
     DEEPGRAM_API_KEY,
     DEEPGRAM_STT_MODEL,
@@ -142,6 +143,7 @@ async def transcribe_voice(request: Request, audio: UploadFile = File(...)):
     api_key = (os.getenv("GEMINI_API_KEY") or "").strip()
     if not api_key:
         raise HTTPException(503, "Gemini is not configured for transcription")
+    token_budget.check("gemini", "cloud")
     payload = await audio.read(20 * 1024 * 1024 + 1)
     if not payload:
         raise HTTPException(400, "audio recording is empty")
@@ -166,7 +168,8 @@ async def transcribe_voice(request: Request, audio: UploadFile = File(...)):
     body = {"contents": [{"parts": [
         {"text": "Transcribe only clearly audible human speech in this recording. If there is silence, noise, music, or no intelligible speech, return exactly [NO_SPEECH]. Otherwise return only the spoken words with normal punctuation. Never invent, infer, or read these instructions aloud."},
         {"inline_data": {"mime_type": mime, "data": base64.b64encode(payload).decode("ascii")}},
-    ]}]}
+    ]}],
+        "generationConfig": {"temperature": 0.0, "maxOutputTokens": 512}}
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
     async with httpx.AsyncClient(timeout=90.0) as client:
         response = await client.post(url, headers={"x-goog-api-key": api_key, "Content-Type": "application/json"}, json=body)
@@ -174,6 +177,7 @@ async def transcribe_voice(request: Request, audio: UploadFile = File(...)):
         logger.warning("Gemini transcription failed: %s", response.text[:500])
         raise HTTPException(502, "speech transcription failed")
     data = response.json()
+    token_budget.record("gemini", "cloud", data.get("usageMetadata"))
     parts = (((data.get("candidates") or [{}])[0].get("content") or {}).get("parts") or [])
     transcript = "".join(str(part.get("text") or "") for part in parts).strip()
     if transcript.upper().strip(" .") in {"[NO_SPEECH]", "NO_SPEECH", "NO SPEECH"}:
