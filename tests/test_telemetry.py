@@ -102,7 +102,8 @@ def test_live_event_stream_route_is_registered():
 
     assert "/v1/telemetry/events" in main.app.openapi()["paths"]
     source = (Path(__file__).resolve().parents[1] / "api-gateway" / "dashboard.html").read_text(encoding="utf-8")
-    assert "EventSource('/v1/telemetry/events')" in source
+    assert "'/v1/activity?after='" in source
+    assert "Live event link" in source
 
 
 def test_activity_and_maintenance_work_without_lifespan():

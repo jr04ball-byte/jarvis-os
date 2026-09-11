@@ -1,11 +1,12 @@
 """V24 P2: auth routes (moved verbatim from main.py)."""
+import asyncio
 import logging
 import time
 from datetime import datetime, timezone
 
 import google_oauth
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 logger = logging.getLogger(__name__)
 
@@ -71,11 +72,24 @@ async def auth_google_disconnect(email: str):
 
 
 @router.get("/gmail/messages")
-async def gmail_messages(email: str, max_results: int = 20, query: str = ""):
+async def gmail_messages(email: str, max_results: int = Query(default=20, ge=1, le=50), query: str = "", include_headers: bool = False):
     """List recent Gmail messages for the connected account. Read-only."""
     store = google_oauth.TokenStore()
     try:
         msgs = await google_oauth.gmail_list_messages(email, store, max_results, query)
+        if include_headers:
+            # The dashboard requests only five rows. Bound metadata fan-out and
+            # never return bodies, access tokens, or arbitrary provider fields.
+            selected = msgs[:5]
+            details = await asyncio.gather(*[
+                google_oauth.gmail_get_message(email, store, msg['id']) for msg in selected
+            ], return_exceptions=True)
+            for msg, detail in zip(selected, details):
+                if isinstance(detail, Exception):
+                    continue
+                headers = {h.get('name', '').lower(): h.get('value', '') for h in detail.get('payload', {}).get('headers', [])}
+                msg.update(sender=headers.get('from', ''), subject=headers.get('subject', ''))
+            msgs = selected
     except PermissionError as e:
         raise HTTPException(401, str(e))
     except httpx.HTTPStatusError as e:

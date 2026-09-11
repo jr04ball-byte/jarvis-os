@@ -3,6 +3,7 @@ import secrets
 
 from deps import AI_API_TOKEN, APP_VERSION
 from fastapi import APIRouter, Depends, HTTPException, Request
+from services import _activity_core, _maintenance_worker
 
 
 async def companion_auth(request: Request):
@@ -29,8 +30,6 @@ async def confirm(request: Request):
 
 @router.get('/status')
 async def status(request: Request, after: int = 0):
-    from services import _activity_core, _maintenance_worker
-
     return {'version': APP_VERSION, 'voice_mode': 'push_to_talk', 'audio_output': False,
             'activity': _activity_core(request).snapshot(after),
             'maintenance': dict(_maintenance_worker(request).status)}

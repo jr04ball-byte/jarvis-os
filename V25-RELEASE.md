@@ -4,6 +4,8 @@ This release implements the supplied V25 scope on top of the uploaded V24 RC1.
 
 ## Features
 
+- The primary `/dashboard` is the neon command center interface: fixed left navigation, greeting/weather/time header, active-task and recent-activity panels, provider cards, calendar, lower email/projects/agents/system panels, and a central animated neural sphere. This is a normal operational layout rather than an overhead God's-eye view. The animated centerpiece is the user-supplied visual reference recreated as a Blender-rendered scene with orbiting traces, drifting signal lights and pulsing beams. A motion toggle and reduced-motion fallback are included. The old V23 Blender asset endpoint is removed from the active dashboard route; `dashboard-classic.html` remains available for compatibility.
+
 - The dashboard neural core responds to actual event sequence changes. No core video or idle animation simulates work. Activity distinguishes queued, active, completed, blocked, failed, awaiting approval, online, offline and idle states. Disconnection is shown explicitly. The last event remains visible after its transient activity expires.
 - `/v1/activity?after=ID` provides a bounded 200-event history, counters, a sequence cursor and gap indication. Events contain names, timestamps and outcomes; arbitrary event payloads, paths, prompts and error text are excluded. The existing SSE stream is similarly redacted.
 - `/voice` and legacy live-voice URLs open hold-to-dictate input with review-before-send and text replies. Pointer release, cancellation, focus loss and page hiding stop capture. There is no automatic restart. Browser speech recognition may use the browser vendor's service and requires browser support; typed input remains available.

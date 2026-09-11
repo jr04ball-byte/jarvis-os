@@ -80,6 +80,18 @@ def test_dashboard_is_self_contained_and_has_all_command_views():
     assert 'id="activityState"' in html
     assert "JARVIS V25" in html
     assert "https://" not in html
+    assert "core-stage" not in html
+    assert "provider-node" not in html
+    assert "command-center-loop" not in html
+    assert "orb-loop" not in html
+    assert "neon-neural-v25.mp4" in html
+
+
+def test_primary_dashboard_uses_reference_layout_and_live_controls():
+    html = (ROOT / "api-gateway" / "dashboard.html").read_text(encoding="utf-8")
+    for marker in ("sidebar", "ACTIVE TASK", "CALENDAR", "neural-scene", "providerCards", "operationalPanels", "commandText"):
+        assert marker in html
+    assert "dashboard-classic" in html
 
 
 def test_blender_command_center_sources_are_shipped():
@@ -136,9 +148,10 @@ def test_fastapi_v23_smoke_and_dashboard_assets(monkeypatch):
     godseye = client.get("/godseye")
     assert godseye.status_code == 404
 
-    poster = client.get("/command-center-poster.png")
+    poster = client.get("/neon-neural-v25.png")
     assert poster.status_code == 200
     assert poster.headers["content-type"].startswith("image/png")
+    assert client.get("/command-center-poster.png").status_code == 404
 
 
 def test_command_center_overview_is_redacted(monkeypatch):

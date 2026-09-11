@@ -18,6 +18,9 @@
     - api-gateway/assets/command-center-loop.mp4
     - api-gateway/assets/command-center-loop.webm
     - api-gateway/assets/command-center-poster.png
+    - api-gateway/assets/jarvis-neon-v25.blend
+    - api-gateway/assets/neon-neural-v25.mp4
+    - api-gateway/assets/neon-neural-v25.png
     - api-gateway/assets/orb-loop.mp4
     - api-gateway/assets/orb-loop.webm
     - api-gateway/assets/orb-poster.png
@@ -26,6 +29,7 @@
   - api-gateway/companion-sw.js
   - api-gateway/companion.html
   - api-gateway/compute_manager.py
+  - api-gateway/dashboard-activity.js
   - api-gateway/dashboard-classic.html
   - api-gateway/dashboard.html
   - api-gateway/deps.py
@@ -181,6 +185,7 @@
   - tools/adopt_v25.py
   - tools/blender_bg_bake.py
   - tools/blender_command_center_bake.py
+  - tools/blender_neon_v25.py
   - tools/blender_orb_bake.py
   - tools/generate_repo_reports.py
 - V13-JARVIS-UPDATE.md

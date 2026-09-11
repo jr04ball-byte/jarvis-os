@@ -1,7 +1,7 @@
 # Jarvis OS — API Map (generated)
 
 **FastAPI application version:** `25.0.0-rc1`  
-**Registered API/UI routes:** **107**
+**Registered API/UI routes:** **101**
 
 | Methods | Path | Name |
 |---|---|---|
@@ -10,25 +10,19 @@
 | POST | `/auth/google/disconnect` | `auth_google_disconnect` |
 | GET | `/auth/google/start` | `auth_google_start` |
 | GET | `/auth/google/status` | `auth_google_status` |
-| GET | `/bg-loop.mp4` | `blender_dashboard_asset` |
-| GET | `/bg-loop.webm` | `blender_dashboard_asset` |
-| GET | `/bg-poster.png` | `blender_dashboard_asset` |
 | GET | `/calendar/events` | `calendar_events` |
-| GET | `/command-center-loop.mp4` | `blender_dashboard_asset` |
-| GET | `/command-center-loop.webm` | `blender_dashboard_asset` |
-| GET | `/command-center-poster.png` | `blender_dashboard_asset` |
 | GET | `/companion` | `companion_ui` |
 | GET | `/companion-manifest.json` | `companion_manifest` |
 | GET | `/companion-sw.js` | `companion_sw` |
 | GET | `/dashboard` | `dashboard_ui` |
+| GET | `/dashboard-activity.js` | `dashboard_activity_js` |
 | GET | `/dashboard-classic` | `dashboard_classic_ui` |
 | GET | `/dashboard-classic.html` | `dashboard_classic_ui` |
 | GET | `/dashboard.html` | `dashboard_ui` |
 | GET | `/gmail/messages` | `gmail_messages` |
 | GET | `/health` | `health_check` |
-| GET | `/orb-loop.mp4` | `blender_dashboard_asset` |
-| GET | `/orb-loop.webm` | `blender_dashboard_asset` |
-| GET | `/orb-poster.png` | `blender_dashboard_asset` |
+| GET | `/neon-neural-v25.mp4` | `neon_dashboard_asset` |
+| GET | `/neon-neural-v25.png` | `neon_dashboard_asset` |
 | GET | `/ready` | `readiness_check` |
 | GET | `/stats` | `get_stats` |
 | GET | `/v1/activity` | `activity` |
