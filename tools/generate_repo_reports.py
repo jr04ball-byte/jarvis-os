@@ -156,6 +156,12 @@ def _write_or_check(path: Path, expected: str, check: bool) -> bool:
     if check:
         if current != expected:
             print(f"STALE: {path.relative_to(ROOT)}")
+            import difflib as _difflib
+
+            for line in _difflib.unified_diff(
+                    (current or "").splitlines(), expected.splitlines(),
+                    "committed", "generated", lineterm=""):
+                print("  " + line[:300])
             return False
         print(f"OK: {path.relative_to(ROOT)}")
         return True
