@@ -1,7 +1,7 @@
 # Jarvis OS — API Map (generated)
 
 **FastAPI application version:** `25.0.0-rc1`  
-**Registered API/UI routes:** **100**
+**Registered API/UI routes:** **101**
 
 | Methods | Path | Name |
 |---|---|---|
@@ -101,6 +101,7 @@
 | GET | `/v1/tools/local` | `local_tools_inventory` |
 | POST | `/v1/voice/transcribe` | `transcribe_voice` |
 | POST | `/v1/voice/turn` | `voice_turn` |
+| GET | `/v1/weather` | `weather` |
 | GET | `/voice` | `voice_ui` |
 | GET | `/voice-engine.js` | `voice_engine_js` |
 | GET | `/voice-live` | `voice_live_ui` |
