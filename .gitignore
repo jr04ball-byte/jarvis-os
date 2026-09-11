@@ -48,3 +48,7 @@ api-gateway/data/*
 
 # Deterministic report generator scratch data
 .report-runtime/
+
+# Tool caches (also excluded from generated repo-tree)
+.ruff_cache/
+.hypothesis/

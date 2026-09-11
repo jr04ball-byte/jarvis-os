@@ -24,6 +24,7 @@ REPORTS = ROOT / "reports"
 EXCLUDED_DIRS = {
     ".git", ".pytest_cache", "__pycache__", ".venv", "venv", "node_modules",
     "dist", "build", "coverage", ".next", "data",
+    ".ruff_cache", ".hypothesis", ".report-runtime",
 }
 
 
