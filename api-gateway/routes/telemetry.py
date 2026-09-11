@@ -24,7 +24,7 @@ from deps import (
 )
 from events import Event
 from events import bus as event_bus
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from security import policy_snapshot as security_policy_snapshot
 from services import (
@@ -169,6 +169,44 @@ async def command_center_overview(request: Request):
 @router.get("/v1/system/compute")
 async def system_compute():
     return await compute_snapshot()
+
+
+# WMO weather-code mapping for the keyless Open-Meteo feed.
+WEATHER_CODES = {
+    0: "Clear", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
+    45: "Fog", 48: "Rime fog", 51: "Light drizzle", 53: "Drizzle",
+    55: "Dense drizzle", 56: "Freezing drizzle", 57: "Freezing drizzle",
+    61: "Light rain", 63: "Rain", 65: "Heavy rain", 66: "Freezing rain",
+    67: "Freezing rain", 71: "Light snow", 73: "Snow", 75: "Heavy snow",
+    77: "Snow grains", 80: "Light showers", 81: "Showers", 82: "Violent showers",
+    85: "Snow showers", 86: "Snow showers", 95: "Thunderstorm",
+    96: "Thunderstorm + hail", 99: "Thunderstorm + hail",
+}
+
+
+@router.get("/v1/weather")
+async def weather(lat: float, lon: float):
+    """Current weather via keyless Open-Meteo. No API key, nothing stored."""
+    if not (-90 <= lat <= 90) or not (-180 <= lon <= 180):
+        raise HTTPException(422, "latitude must be -90..90 and longitude -180..180")
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            r = await client.get(
+                "https://api.open-meteo.com/v1/forecast",
+                params={"latitude": lat, "longitude": lon, "current": "temperature_2m,weather_code,wind_speed_10m",
+                        "temperature_unit": "fahrenheit", "wind_speed_unit": "mph"},
+            )
+    except httpx.HTTPError as e:
+        raise HTTPException(502, f"weather lookup failed: {e}")
+    if r.status_code != 200:
+        raise HTTPException(502, "weather lookup failed")
+    cur = r.json().get("current") or {}
+    code = cur.get("weather_code")
+    temp = cur.get("temperature_2m")
+    condition = WEATHER_CODES.get(code, "Unknown")
+    display = f"{round(temp)}°F · {condition}" if isinstance(temp, (int, float)) else condition
+    return {"temp_f": temp, "condition": condition, "code": code,
+            "wind_mph": cur.get("wind_speed_10m"), "display": display}
 
 
 @router.get("/v1/telemetry/summary")
