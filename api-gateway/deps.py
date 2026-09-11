@@ -23,7 +23,7 @@ from store import ConversationDB, DocumentRAG, PerformanceMonitor
 logger = logging.getLogger(__name__)
 
 
-APP_VERSION = "23.0.0"
+APP_VERSION = "24.0.0-rc1"
 
 
 def data_dir() -> Path:
@@ -56,9 +56,9 @@ class AppContainer:
         self._overrides: dict[str, Any] = {}
 
     def get(self, name: str) -> Any:
-        if name in self._overrides:
-            return self._overrides[name]
         with self._lock:
+            if name in self._overrides:
+                return self._overrides[name]
             if name not in self._instances:
                 try:
                     factory = self._factories[name]
@@ -68,24 +68,72 @@ class AppContainer:
             return self._instances[name]
 
     def override(self, name: str, instance: Any) -> None:
-        if name not in self._factories:
-            raise KeyError(f"unknown service: {name}")
-        self._overrides[name] = instance
+        with self._lock:
+            if name not in self._factories:
+                raise KeyError(f"unknown service: {name}")
+            self._overrides[name] = instance
 
     def reset(self, name: str | None = None) -> None:
-        if name is None:
-            self._overrides.clear()
-        else:
-            self._overrides.pop(name, None)
+        """Remove test overrides while preserving already-built production instances."""
+        with self._lock:
+            if name is None:
+                self._overrides.clear()
+            else:
+                self._overrides.pop(name, None)
+
+    def close(self) -> None:
+        """Best-effort shutdown for services that own durable resources.
+
+        Most stores use short-lived SQLite connections and need no teardown, but
+        OrchestratorStore owns a connection.  Closing is idempotent and keeps
+        TestClient/uvicorn shutdown deterministic on Windows.
+        """
+        with self._lock:
+            instances = list(self._instances.values())
+            self._instances.clear()
+        for instance in instances:
+            closer = getattr(instance, "close", None)
+            if callable(closer):
+                try:
+                    closer()
+                except Exception as exc:  # lifecycle cleanup must not mask shutdown
+                    logger.warning("service shutdown failed for %s: %s", type(instance).__name__, exc)
+
+
+class LazyService:
+    """Backwards-compatible lazy proxy around a named container service.
+
+    Existing route/service modules can continue importing ``db``/``rag`` etc.
+    without constructing SQLite-backed services during module import.  New code
+    should prefer ``container.get(name)`` or request-scoped dependencies.
+    """
+
+    __slots__ = ("_container", "_name")
+
+    def __init__(self, owner: AppContainer, name: str) -> None:
+        object.__setattr__(self, "_container", owner)
+        object.__setattr__(self, "_name", name)
+
+    def _target(self) -> Any:
+        return self._container.get(self._name)
+
+    def __getattr__(self, item: str) -> Any:
+        return getattr(self._target(), item)
+
+    def __repr__(self) -> str:
+        return f"<LazyService {self._name}>"
 
 
 container = AppContainer()
 
-db = container.get("db")
-rag = container.get("rag")
-monitor = container.get("monitor")
-orchestrator = container.get("orchestrator")
-project_worker_runs = container.get("project_worker_runs")
+# Compatibility names remain importable but no longer construct services at
+# import time.  This removes the main lifecycle side effect without a risky
+# all-at-once rewrite of every route.
+db = LazyService(container, "db")
+rag = LazyService(container, "rag")
+monitor = LazyService(container, "monitor")
+orchestrator = LazyService(container, "orchestrator")
+project_worker_runs = LazyService(container, "project_worker_runs")
 
 
 # ---- Configuration + rate limiting (moved from main.py in V24 P2) ----

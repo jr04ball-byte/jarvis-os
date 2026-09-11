@@ -1,19 +1,31 @@
-AI SYSTEM v9 - LOCAL TEST
+JARVIS OS V24 RELEASE CANDIDATE - LOCAL TEST
 
-1. Make sure Ollama is running on Windows.
-2. Extract this folder somewhere permanent, e.g. C:\AI-System.
-3. Double-click START-LOCAL-TEST.bat.
-4. The script creates a local Python environment, installs the gateway dependencies, starts the API without Docker, and opens the dashboard.
-5. Test the dashboard first.
-6. Open the Voice page and allow microphone access.
-7. Click Talk ONCE. Speak. Pause. The system should transcribe, respond, complete an allowed command, and return to listening automatically.
-8. Keep the API terminal window open while testing.
-9. Run STOP-LOCAL-TEST.bat when finished.
+1. Make sure Python, Node.js, Git, and (for local AI) Ollama are available.
+2. Keep your real secrets only in .env. Do not copy runtime data or token keys into Git.
+3. Install gateway dependencies:
+     python -m pip install -r api-gateway/requirements.txt pytest
+4. Run the release verification stack from the repository root:
+     python -m compileall -q api-gateway tests
+     python -m pytest -q
+     node --test tests/voice-engine.test.js
+     python tools/generate_repo_reports.py --check
+5. Start Jarvis with START-LOCAL-TEST.bat or:
+     python -m uvicorn main:app --app-dir api-gateway --host 127.0.0.1 --port 8000
+6. Check:
+     Dashboard: http://127.0.0.1:8000/dashboard
+     Voice:     http://127.0.0.1:8000/voice-live
+     API Docs:  http://127.0.0.1:8000/docs
+     Liveness:  http://127.0.0.1:8000/health
+     Readiness: http://127.0.0.1:8000/ready
+7. Readiness may return 503 when no intelligence provider is configured/online; that is expected.
+8. If AI_REQUIRE_AUTH=true, use the dashboard API Session control for authenticated requests.
+9. Validate Docker on the target Windows machine before production deployment:
+     docker compose config
+     docker compose up -d --build
+10. Test configured live integrations (Gemini/OpenAI/Deepgram/Google OAuth/Host Bridge/Home Assistant) on the target host; offline CI intentionally mocks or skips real credentials.
 
-URLs:
-Dashboard: http://127.0.0.1:8000/dashboard
-Voice:     http://127.0.0.1:8000/voice
-API Docs:  http://127.0.0.1:8000/docs
-Ollama:    http://127.0.0.1:11434
-
-If voice is slow, send the exact timing/error and we can move transcription to a native local Whisper service so the browser is no longer responsible for speech recognition.
+Expected release-candidate automated baseline at packaging time:
+- 145 Python tests passing
+- 19 Node voice tests passing
+- Python compileall passing
+- generated report drift check passing

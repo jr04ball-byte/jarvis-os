@@ -41,3 +41,10 @@ api-gateway/data/project_worker.db
 
 # V23 Blender command-center bake intermediates
 api-gateway/assets/command-center-frames/
+
+# API gateway runtime data / credentials
+api-gateway/data/*
+!api-gateway/data/.gitkeep
+
+# Deterministic report generator scratch data
+.report-runtime/

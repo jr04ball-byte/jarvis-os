@@ -17,7 +17,12 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
-from events import WorkerCompleted, WorkerStarted
+from events import (
+    VerificationFailed,
+    VerificationPassed,
+    WorkerCompleted,
+    WorkerStarted,
+)
 from events import bus as event_bus
 
 logger = logging.getLogger(__name__)
@@ -376,6 +381,7 @@ def inspect_workspace(workspace: str) -> dict[str, Any]:
 
     git = run_command(['git', 'status', '--short', '--branch'], str(root), 20)
     if git.exit_code == 0:
+        evidence['git']['available'] = True
         evidence['git']['status'] = git.as_dict()
         evidence['git']['changed_paths'] = _git_changed_paths(root)
         branch = run_command(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], str(root), 20)
@@ -396,7 +402,12 @@ def capture_git_diff(workspace: str) -> dict[str, Any]:
     status = run_command(['git', 'status', '--short'], str(root), 20)
     diff = run_command(['git', 'diff', '--no-ext-diff', '--'], str(root), 30)
     staged = run_command(['git', 'diff', '--cached', '--no-ext-diff', '--'], str(root), 30)
-    return {'status': status.as_dict(), 'diff': diff.as_dict(), 'staged_diff': staged.as_dict()}
+    return {
+        'available': status.exit_code == 0,
+        'status': status.as_dict(),
+        'diff': diff.as_dict(),
+        'staged_diff': staged.as_dict(),
+    }
 
 
 def select_verification_commands(workspace: str, changed_paths: list[str] | None = None,
@@ -475,6 +486,11 @@ def verify_workspace(workspace: str, *, run_tests: bool = True, run_build: bool 
         'git': capture_git_diff(str(root)),
     }
     payload['failure_classification'] = classify_verification_failure(payload)
+    detail = ", ".join(" ".join(r.get("command") or []) for r in results if not r.get("ok"))[:500]
+    if ok:
+        event_bus.emit(VerificationPassed(workspace=str(root), detail="; ".join(" ".join(c) for c in selected)[:500]))
+    else:
+        event_bus.emit(VerificationFailed(workspace=str(root), detail=detail or payload["status"]))
     return payload
 
 
@@ -607,6 +623,6 @@ class WorkerRunStore:
         with self._connect() as conn:
             conn.execute('UPDATE worker_runs SET status=?, attempts_json=?, updated_at=? WHERE id=?',
                          (new_status, json.dumps(attempts, default=str), int(time.time()), run_id))
-        if new_status in ("completed", "failed", "cancelled"):
+        if new_status in {"completed", "verified", "failed", "cancelled", "blocked", "blocked_environment"}:
             event_bus.emit(WorkerCompleted(run_id=run_id, status=new_status, attempt_count=len(attempts)))
         return self.get(run_id)

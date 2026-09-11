@@ -1,7 +1,9 @@
 """V24 P2: telemetry routes (moved verbatim from main.py)."""
 import asyncio
+import json
 import logging
 import time
+from dataclasses import asdict
 from datetime import datetime, timezone
 from typing import Any
 
@@ -21,7 +23,10 @@ from deps import (
     project_worker_runs,
     rag,
 )
+from events import Event
+from events import bus as event_bus
 from fastapi import APIRouter, Request
+from fastapi.responses import StreamingResponse
 from security import policy_snapshot as security_policy_snapshot
 from services import (
     _PENDING_ACTIONS,
@@ -159,6 +164,56 @@ async def system_compute():
 async def telemetry_summary():
     """Bus-derived outcome counters (V24 P5). Dashboard-safe: ids/kinds only."""
     return collector.snapshot()
+
+
+@router.get("/v1/telemetry/events")
+async def telemetry_events(request: Request):
+    """Live, dashboard-safe lifecycle events via Server-Sent Events.
+
+    The event bus carries identifiers/status only; secrets and tool arguments
+    never enter this stream. A bounded per-client queue prevents slow clients
+    from applying backpressure to Jarvis workers.
+    """
+    async def stream():
+        queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue(maxsize=100)
+        loop = asyncio.get_running_loop()
+
+        def enqueue(payload: dict[str, Any]) -> None:
+            if queue.full():
+                try:
+                    queue.get_nowait()
+                except asyncio.QueueEmpty:
+                    pass
+            try:
+                queue.put_nowait(payload)
+            except asyncio.QueueFull:
+                pass
+
+        def on_event(event: Event) -> None:
+            payload = asdict(event)
+            loop.call_soon_threadsafe(enqueue, payload)
+
+        event_bus.subscribe(Event, on_event)
+        try:
+            yield 'event: ready\ndata: {"status":"connected"}\n\n'
+            while True:
+                if await request.is_disconnected():
+                    break
+                try:
+                    payload = await asyncio.wait_for(queue.get(), timeout=15.0)
+                except TimeoutError:
+                    yield ': heartbeat\n\n'
+                    continue
+                name = str(payload.get("name") or "event").replace("\n", "")
+                yield f"event: jarvis\ndata: {json.dumps(payload, separators=(',', ':'))}\n\n"
+        finally:
+            event_bus.unsubscribe(Event, on_event)
+
+    return StreamingResponse(
+        stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @router.get("/v1/performance")

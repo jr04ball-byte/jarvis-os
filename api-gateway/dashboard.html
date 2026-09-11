@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#07101f">
-<title>Jarvis V23 — Command Center</title>
+<title>Jarvis V24 — Command Center</title>
 <style>
 :root{
   --bg:#06101e;--bg2:#0a1425;--panel:rgba(12,24,42,.78);--panel2:rgba(14,29,50,.93);
@@ -51,7 +51,7 @@ button,input,select{font:inherit}.ambient{position:fixed;inset:0;z-index:-3;over
 <div class="gridlines"></div>
 <div class="shell">
   <aside class="sidebar">
-    <div class="brand"><div class="mark">J</div><div><b>JARVIS</b><small>V23 COMMAND CENTER</small></div></div>
+    <div class="brand"><div class="mark">J</div><div><b>JARVIS</b><small>V24 COMMAND CENTER</small></div></div>
     <nav class="nav">
       <button class="active" data-view="overview" onclick="showView('overview',this)"><span class="icon">◉</span><span>Command Center</span></button>
       <button data-view="projects" onclick="showView('projects',this)"><span class="icon">▣</span><span>Project Worker</span></button>
@@ -165,15 +165,15 @@ button,input,select{font:inherit}.ambient{position:fixed;inset:0;z-index:-3;over
       </div>
     </section>
 
-    <div class="footer"><div><strong>JARVIS V23</strong> — one control plane, four specialized intelligence engines, bounded authority.</div><div><a href="/v1/brain/status" target="_blank">Brain status</a> · <a href="/v1/orchestrator/targets" target="_blank">Targets</a> · <a href="/docs" target="_blank">API docs</a></div></div>
+    <div class="footer"><div><strong>JARVIS V24</strong> — one control plane, four specialized intelligence engines, bounded authority.</div><div><a href="/v1/brain/status" target="_blank">Brain status</a> · <a href="/v1/orchestrator/targets" target="_blank">Targets</a> · <a href="/docs" target="_blank">API docs</a></div></div>
   </main>
 </div>
 <div id="toast" class="toast"></div>
 <script>
-const state={overview:null,lastProject:null,refreshTimer:null,busy:false};
+const state={overview:null,lastProject:null,refreshTimer:null,eventSource:null,eventRefreshTimer:null,busy:false};
 const $=id=>document.getElementById(id);
 function sessionToken(){return sessionStorage.getItem('jarvisApiToken')||''}
-function setSessionToken(){const current=sessionToken();const value=window.prompt('Optional Jarvis API session token. It is kept only for this browser tab.',current);if(value===null)return;if(value.trim())sessionStorage.setItem('jarvisApiToken',value.trim());else sessionStorage.removeItem('jarvisApiToken');toast(value.trim()?'Session token set for this tab.':'Session token cleared.');refreshAll(true)}
+function setSessionToken(){const current=sessionToken();const value=window.prompt('Optional Jarvis API session token. It is kept only for this browser tab.',current);if(value===null)return;if(value.trim())sessionStorage.setItem('jarvisApiToken',value.trim());else sessionStorage.removeItem('jarvisApiToken');toast(value.trim()?'Session token set for this tab.':'Session token cleared.');startTelemetryStream();refreshAll(true)}
 async function api(path,options={}){const headers=new Headers(options.headers||{});const token=sessionToken();if(token)headers.set('Authorization','Bearer '+token);if(options.body&&!headers.has('Content-Type'))headers.set('Content-Type','application/json');const res=await fetch(path,{...options,headers,cache:'no-store'});if(res.status===401){throw new Error('Authentication required. Use API Session in the sidebar.')}let data=null;try{data=await res.json()}catch(_){data={}}if(!res.ok)throw new Error((data&&data.detail&&typeof data.detail==='string')?data.detail:(data&&data.detail?JSON.stringify(data.detail):`HTTP ${res.status}`));return data}
 function toast(msg,bad=false){const t=$('toast');t.textContent=String(msg||'');t.className='toast show'+(bad?' bad':'');clearTimeout(t._timer);t._timer=setTimeout(()=>t.className='toast',4200)}
 function fmtUptime(s){s=Number(s||0);if(s<60)return Math.floor(s)+'s';if(s<3600)return Math.floor(s/60)+'m';if(s<86400)return Math.floor(s/3600)+'h '+Math.floor((s%3600)/60)+'m';return Math.floor(s/86400)+'d '+Math.floor((s%86400)/3600)+'h'}
@@ -215,7 +215,9 @@ async function decideApproval(id,confirmed,action){if(confirmed&&!window.confirm
 async function loadConversations(){const root=$('conversationList');if(!root)return;try{const rows=await api('/v1/conversations');clear(root);(rows||[]).slice(0,20).forEach(c=>{const row=tag('div','detail-row');row.append(tag('span','',c.title||`Conversation ${c.id}`),tag('b','',`${c.assistant_profile||'general'} • ${c.model||'auto'}`));root.append(row)});if(!(rows||[]).length)root.append(tag('div','empty','No saved conversations.'))}catch(e){clear(root);root.append(tag('div','empty','Conversation list unavailable: '+e.message))}}
 function openVoiceConsole(){window.open('/voice-live.html','JarvisVoiceConsole','width=540,height=760,resizable=yes,scrollbars=yes')}
 window.openVoiceConsole=openVoiceConsole;
-refreshAll(false);state.refreshTimer=setInterval(()=>refreshAll(false),3500);document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshAll(false)});
+function scheduleLiveRefresh(){clearTimeout(state.eventRefreshTimer);state.eventRefreshTimer=setTimeout(()=>refreshAll(false),180)}
+function startTelemetryStream(){if(state.eventSource){state.eventSource.close();state.eventSource=null}if(sessionToken())return;try{const es=new EventSource('/v1/telemetry/events');state.eventSource=es;es.addEventListener('jarvis',scheduleLiveRefresh);es.onerror=()=>{es.close();if(state.eventSource===es)state.eventSource=null}}catch(_){state.eventSource=null}}
+refreshAll(false);startTelemetryStream();state.refreshTimer=setInterval(()=>refreshAll(false),15000);document.addEventListener('visibilitychange',()=>{if(!document.hidden){refreshAll(false);if(!state.eventSource)startTelemetryStream()}});window.addEventListener('beforeunload',()=>{if(state.eventSource)state.eventSource.close()});
 </script>
 </body>
 </html>

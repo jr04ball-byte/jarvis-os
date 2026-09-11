@@ -12,6 +12,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - name: Install deps
         run: |
           python -m pip install --upgrade pip
@@ -20,5 +23,11 @@ jobs:
         run: python -m ruff check --select F401,I001,UP006,UP045,UP035,FURB167,RUF010,RUF022 api-gateway tests tools
       - name: Lint gate (no silent swallows in verified code)
         run: python -m ruff check --select S110 api-gateway tests
-      - name: Run tests
+      - name: Run Python tests
         run: pytest -q
+      - name: Run voice engine tests
+        run: node --test tests/voice-engine.test.js
+      - name: Compile Python sources
+        run: python -m compileall -q api-gateway tests
+      - name: Generated reports are current
+        run: python tools/generate_repo_reports.py --check

@@ -1,49 +1,66 @@
-# Jarvis OS — Worker Engine (generated Cycle 7, source-verified)
+# Jarvis OS — Worker Engine (V24 release candidate)
 
-Two halves: **Orchestrator** (durable goal→plan→tasks state machine) and
-**Project Worker** (repo inspection → implementation support → verification).
-Pipeline: inspect → understand → plan → implement → test → diagnose → repair
-→ verify → evidence. Nothing completes without verification (callers enforce;
-stores are dumb durable state).
+The worker plane has two distinct responsibilities:
 
-## Orchestrator (`api-gateway/orchestrator.py`, 95% covered)
-Pure-Python, no LLM dependency. `build_plan(goal)` decomposes via regex
-classifiers (`DEEP_RE`/`TOOL_RE`) + workspace target matching
-(`workspace_registry.context_for`).
+1. **Orchestrator** — durable deterministic Goal → Plan → Task state.
+2. **Project Worker** — repository evidence, implementation boundaries,
+   verification, repair classification, and resumable run history.
 
-`OrchestratorStore` (SQLite, per-operation short-lived connections):
-- `jarvis_projects(id, goal, plan_json, status, created_at, updated_at)`
-- `jarvis_tasks(id, project_id, position, title, kind, risk, brain, capability,
-  status, depends_on, result_json, error, created_at, updated_at)`
-- `jarvis_audit(id, project_id, task_id, event, detail_json, created_at)`
-- Statuses: pending → ready → running/blocked/awaiting_approval →
-  completed/failed/cancelled. Completing a task readies its successor;
-  all-complete flips the project. Terminal tasks are immutable.
-- Key methods: `create_project`, `get_project`, `next_task` (dependency-aware),
-  `transition` (audited), `list_projects` (dashboard summaries), `close()`.
+## Orchestrator
+`api-gateway/orchestrator.py` stores projects, tasks, and audit events in SQLite.
+It does not require an LLM to build the base plan. Task dependencies and
+terminal-state rules are deterministic and heavily covered by tests.
 
-## Project Worker (`api-gateway/project_worker.py`, 87% covered)
-Sandbox-aware repo intelligence (never reads `.env`/keys; skips
-`.git/node_modules/.venv/dist/...`; `run_command` allowlists safe commands
-with timeouts and `CommandEvidence` tails):
-- `inspect_workspace` → files + fingerprints + baselines; `capture/compare_workspace_baseline`,
-  `capture_git_diff`
-- `discover_commands` → pytest/npm/pnpm/yarn/bun test/build/lint commands
-  (pnpm lint fix landed Cycle 4)
-- `select_verification_commands`, `verify_workspace` (tests/build/lint),
-  `classify_verification_failure`, `make_worker_prompt` / `make_repair_prompt`
-  (bounded prompts: scope, permission, no-secrets rules)
-- `WorkerRunStore` (`worker_runs` table): `create/get/list/update` with
-  attempt history — resumable runs.
+Lifecycle events are emitted when tasks become queued/completed so telemetry
+and the dashboard can observe work without coupling to the store.
 
-## How they connect
-`main.py` exposes both (`/v1/orchestrator/*`, `/v1/project-worker/*`);
-`brains.py` routes coding goals to the opencode worker; the orchestrator owns
-task state while the worker owns repo evidence. Audit table + worker-run
-attempts are the evidence trail the directive demands.
+## Project Worker
+`api-gateway/project_worker.py` provides:
 
-## Gaps
-- No end-to-end test drives a full inspect→verify loop against a fixture repo
-  (unit-covered per step; proposed in test-report gaps).
-- `_run_project_autofix_cycle` (97 LOC in `main.py`) orchestrates from the web
-  layer — candidate to move behind the worker engine in V24.
+- workspace path validation
+- safe file/read candidates and secret exclusions
+- git status/diff evidence
+- workspace fingerprint baselines
+- test/build/lint command discovery
+- targeted JS/TS and Python verification selection
+- bounded subprocess execution with timeouts/tail capture
+- code-vs-environment failure classification
+- worker/repair prompt construction
+- durable `WorkerRunStore`
+- verification lifecycle events
+
+`inspect_workspace()` now reports `git.available=true` explicitly on healthy Git
+repositories, and `capture_git_diff()` includes the same availability signal.
+
+## Deterministic fixture repository
+`tests/fixtures/project_worker_repo/` is a real miniature Git repository fixture
+copied into a temporary workspace during tests. It starts with a deliberate
+calculator defect. `test_project_worker_fixture_e2e.py` executes:
+
+```text
+copy fixture
+→ initialize Git baseline
+→ inspect
+→ capture baseline
+→ verify (expected failure)
+→ classify as code failure
+→ apply minimal deterministic repair
+→ compare baseline/diff evidence
+→ targeted re-verification (expected pass)
+```
+
+This closes the previous gap where worker primitives were tested separately but
+no deterministic repository exercised failure → repair → successful verify in
+one flow.
+
+## Safety boundary
+Worker prompts forbid secret access, destructive Git operations, deployments,
+publishing, purchasing, messaging, or unrelated changes. OpenCode receives the
+specific registered workspace and permission scope. Sensitive side effects
+remain owned by Jarvis confirmation policy rather than the coding worker.
+
+## Next scaling consideration
+The current in-process worker/event model is appropriate for a single Jarvis
+host. If autonomous jobs later move to multiple processes/machines, worker
+leases, event transport, and durable queues should be externalized rather than
+adding more global process state.

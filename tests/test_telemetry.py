@@ -65,3 +65,41 @@ def test_summary_route_serves_collector_snapshot():
     assert response.status_code == 200
     payload = response.json()
     assert set(payload) == {"counts", "failure_latency_ms", "recent"}
+
+
+def test_verification_health_and_memory_events_are_counted():
+    from events import (
+        HealthChanged,
+        MemoryUpdated,
+        VerificationFailed,
+        VerificationPassed,
+    )
+
+    collector, bus = make_collector()
+    bus.emit(VerificationPassed(workspace="repo", detail="pytest"))
+    bus.emit(VerificationFailed(workspace="repo", detail="lint"))
+    bus.emit(HealthChanged(provider="ollama", online=True))
+    bus.emit(MemoryUpdated(scope="project", key="x"))
+    counts = collector.snapshot()["counts"]
+    assert counts["verification.passed"] == 1
+    assert counts["verification.failed"] == 1
+    assert counts["health.ollama.online"] == 1
+    assert counts["memory.updated.project"] == 1
+
+
+def test_attach_is_idempotent_and_detach_stops_collection():
+    collector, bus = make_collector()
+    collector.attach(bus)
+    bus.emit(TaskQueued(project_id="p", task_id="one"))
+    assert collector.snapshot()["counts"]["task.queued"] == 1
+    collector.detach()
+    bus.emit(TaskQueued(project_id="p", task_id="two"))
+    assert collector.snapshot()["counts"]["task.queued"] == 1
+
+
+def test_live_event_stream_route_is_registered():
+    import main
+
+    assert "/v1/telemetry/events" in main.app.openapi()["paths"]
+    source = (Path(__file__).resolve().parents[1] / "api-gateway" / "dashboard.html").read_text(encoding="utf-8")
+    assert "EventSource('/v1/telemetry/events')" in source

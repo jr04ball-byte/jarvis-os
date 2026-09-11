@@ -1,6 +1,6 @@
 {
   "name": "ai-system",
-  "version": "1.0.0",
+  "version": "24.0.0-rc1",
   "description": "Self-hosted AI system with LLMs and image generation",
   "main": "client.py",
   "scripts": {
@@ -12,7 +12,13 @@
     "down": "docker-compose down",
     "pull-model": "docker exec -it ollama ollama pull",
     "health": "curl http://localhost:8000/health",
-    "stats": "curl http://localhost:8000/stats"
+    "stats": "curl http://localhost:8000/stats",
+    "test": "python -m pytest -q && node --test tests/voice-engine.test.js",
+    "test:python": "python -m pytest -q",
+    "test:voice": "node --test tests/voice-engine.test.js",
+    "verify": "python -m compileall -q api-gateway tests && python -m pytest -q && node --test tests/voice-engine.test.js",
+    "reports": "python tools/generate_repo_reports.py",
+    "reports:check": "python tools/generate_repo_reports.py --check"
   },
   "keywords": [
     "ai",

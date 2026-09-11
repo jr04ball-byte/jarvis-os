@@ -15,7 +15,7 @@ router = APIRouter()
 async def root():
     return {
         "service": "Enhanced AI System",
-        "version": "23.0.0",
+        "version": APP_VERSION,
         "features": [
             "Streaming responses",
             "Conversation memory",

@@ -1,9 +1,11 @@
-# V24 — main.py Decomposition Proposal (NEEDS APPROVAL — no code moved yet)
+# V24 — main.py Decomposition Proposal (COMPLETED)
 
-Status: **PROPOSAL**. This document changes nothing. Execution requires human
-approval and then proceeds in one branch + PR per phase, each gated by the
-full suite + CI. Generated from an AST audit of `api-gateway/main.py` in
-Cycle 6 (see evidence appendix).
+Status: **COMPLETED / HISTORICAL PLAN**. The measurements below describe the
+pre-refactor V23 baseline. V24 completed the decomposition: the current
+`api-gateway/main.py` is a 159-line composition root, domain handlers live in
+`routes/`, persistence moved to `store.py`, request models to `schemas.py`, and
+services/configuration were extracted. See `V24-RELEASE-CANDIDATE.md` and
+`reports/architecture.md` for the current measured state.
 
 ## 1. Current state (measured, not estimated)
 

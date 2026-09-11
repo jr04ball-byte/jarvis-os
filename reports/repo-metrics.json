@@ -1,0 +1,207 @@
+{
+  "api_gateway_python_files": 34,
+  "app_version": "24.0.0-rc1",
+  "largest_python_modules": [
+    {
+      "lines": 915,
+      "path": "api-gateway/services.py"
+    },
+    {
+      "lines": 628,
+      "path": "api-gateway/project_worker.py"
+    },
+    {
+      "lines": 345,
+      "path": "api-gateway/routes/chat.py"
+    },
+    {
+      "lines": 337,
+      "path": "api-gateway/routes/projects.py"
+    },
+    {
+      "lines": 298,
+      "path": "api-gateway/routes/workers.py"
+    },
+    {
+      "lines": 287,
+      "path": "api-gateway/deps.py"
+    },
+    {
+      "lines": 283,
+      "path": "api-gateway/intelligence_router.py"
+    },
+    {
+      "lines": 275,
+      "path": "api-gateway/google_oauth.py"
+    },
+    {
+      "lines": 260,
+      "path": "api-gateway/brains.py"
+    },
+    {
+      "lines": 248,
+      "path": "api-gateway/store.py"
+    }
+  ],
+  "local_dependency_edges": {
+    "brains": [
+      "events",
+      "intelligence_router"
+    ],
+    "deps": [
+      "orchestrator",
+      "project_worker",
+      "store"
+    ],
+    "main": [
+      "brains",
+      "deps",
+      "events",
+      "store",
+      "telemetry_collector"
+    ],
+    "orchestrator": [
+      "events",
+      "workspace_registry"
+    ],
+    "project_worker": [
+      "events"
+    ],
+    "providers.opencode": [
+      "workspace_registry"
+    ],
+    "routes.auth": [
+      "google_oauth"
+    ],
+    "routes.chat": [
+      "compute_manager",
+      "deps",
+      "schemas",
+      "services"
+    ],
+    "routes.health": [
+      "brains",
+      "deps",
+      "services"
+    ],
+    "routes.projects": [
+      "deps",
+      "project_worker",
+      "schemas",
+      "security",
+      "services",
+      "workspace_registry"
+    ],
+    "routes.providers": [
+      "compute_manager",
+      "deps",
+      "model_lab",
+      "schemas",
+      "services"
+    ],
+    "routes.telemetry": [
+      "brains",
+      "compute_manager",
+      "deps",
+      "events",
+      "security",
+      "services",
+      "telemetry_collector",
+      "tools",
+      "workspace_registry"
+    ],
+    "routes.voice": [
+      "deps",
+      "schemas",
+      "services"
+    ],
+    "routes.workers": [
+      "brains",
+      "deps",
+      "local_tools",
+      "project_worker",
+      "schemas",
+      "services",
+      "tools",
+      "workspace_registry"
+    ],
+    "services": [
+      "brains",
+      "compute_manager",
+      "deps",
+      "google_oauth",
+      "local_tools",
+      "project_worker",
+      "schemas",
+      "security",
+      "tools",
+      "workspace_registry"
+    ],
+    "telemetry_collector": [
+      "events"
+    ]
+  },
+  "local_import_cycle_count": 0,
+  "local_import_cycles": [],
+  "main_py_lines": 170,
+  "python_test_files": 27,
+  "registered_routes": 104,
+  "route_groups": {
+    "agent": 3,
+    "artifacts": 5,
+    "auth": 4,
+    "bg-loop.mp4": 1,
+    "bg-loop.webm": 1,
+    "bg-poster.png": 1,
+    "brain": 5,
+    "calendar": 1,
+    "chat": 2,
+    "command-center": 1,
+    "command-center-loop.mp4": 1,
+    "command-center-loop.webm": 1,
+    "command-center-poster.png": 1,
+    "companion": 1,
+    "companion-manifest.json": 1,
+    "companion-sw.js": 1,
+    "compare": 1,
+    "computer": 5,
+    "connections": 3,
+    "conversations": 4,
+    "dashboard": 1,
+    "dashboard-classic": 1,
+    "dashboard-classic.html": 1,
+    "dashboard.html": 1,
+    "deepgram-speak": 1,
+    "deepgram-speak-stream": 1,
+    "deepgram-status": 1,
+    "deepgram-token": 1,
+    "documents": 2,
+    "gemini": 3,
+    "gmail": 1,
+    "godseye": 1,
+    "godseye.html": 1,
+    "health": 1,
+    "model-lab": 6,
+    "models": 1,
+    "opencode": 1,
+    "orb-loop.mp4": 1,
+    "orb-loop.webm": 1,
+    "orb-poster.png": 1,
+    "orchestrator": 9,
+    "performance": 1,
+    "project-worker": 6,
+    "ready": 1,
+    "research": 1,
+    "root": 1,
+    "sales": 1,
+    "stats": 1,
+    "system": 2,
+    "telemetry": 2,
+    "tools": 3,
+    "voice": 2,
+    "voice-engine.js": 1,
+    "voice-live": 1,
+    "voice-live.html": 1
+  },
+  "services_py_lines": 915
+}

@@ -1,105 +1,111 @@
-# Jarvis OS — API Map (generated Cycle 7, AST-measured: 97 routes)
+# Jarvis OS — API Map (generated)
 
-Conventions: all handlers `async` unless noted; `/v1/*` is JSON, `/` hosts pages/assets.
+**FastAPI application version:** `24.0.0-rc1`  
+**Registered API/UI routes:** **104**
 
-## System / health (GET)
-| Method | Path | Handler |
+| Methods | Path | Name |
 |---|---|---|
 | GET | `/` | `root` |
+| GET | `/auth/google/callback` | `auth_google_callback` |
+| POST | `/auth/google/disconnect` | `auth_google_disconnect` |
+| GET | `/auth/google/start` | `auth_google_start` |
+| GET | `/auth/google/status` | `auth_google_status` |
+| GET | `/bg-loop.mp4` | `blender_dashboard_asset` |
+| GET | `/bg-loop.webm` | `blender_dashboard_asset` |
+| GET | `/bg-poster.png` | `blender_dashboard_asset` |
+| GET | `/calendar/events` | `calendar_events` |
+| GET | `/command-center-loop.mp4` | `blender_dashboard_asset` |
+| GET | `/command-center-loop.webm` | `blender_dashboard_asset` |
+| GET | `/command-center-poster.png` | `blender_dashboard_asset` |
+| GET | `/companion` | `companion_ui` |
+| GET | `/companion-manifest.json` | `companion_manifest` |
+| GET | `/companion-sw.js` | `companion_sw` |
+| GET | `/dashboard` | `dashboard_ui` |
+| GET | `/dashboard-classic` | `dashboard_classic_ui` |
+| GET | `/dashboard-classic.html` | `dashboard_classic_ui` |
+| GET | `/dashboard.html` | `dashboard_ui` |
+| GET | `/gmail/messages` | `gmail_messages` |
+| GET | `/godseye` | `godseye_ui` |
+| GET | `/godseye.html` | `godseye_ui` |
 | GET | `/health` | `health_check` |
+| GET | `/orb-loop.mp4` | `blender_dashboard_asset` |
+| GET | `/orb-loop.webm` | `blender_dashboard_asset` |
+| GET | `/orb-poster.png` | `blender_dashboard_asset` |
 | GET | `/ready` | `readiness_check` |
 | GET | `/stats` | `get_stats` |
-| GET | `/v1/system/status` | `system_status` |
-| GET | `/v1/system/compute` | `system_compute` |
-| GET | `/v1/performance` | `get_performance` |
-| GET | `/v1/command-center/overview` | `command_center_overview` |
-| GET | `/v1/agent/pending` | `agent_pending` |
-
-## Chat / brains (POST unless noted)
-| Method | Path | Handler |
-|---|---|---|
-| POST | `/v1/chat/completions` | `chat_completion` |
-| POST | `/v1/chat/completions-rag` | `chat_with_rag` |
-| POST | `/v1/compare` | `compare_models` |
-| POST | `/v1/sales/chat` | `sales_chat` |
 | POST | `/v1/agent/chat` | `agent_chat` |
 | POST | `/v1/agent/confirm` | `agent_confirm` |
+| GET | `/v1/agent/pending` | `agent_pending` |
+| GET | `/v1/artifacts` | `artifacts_list` |
+| POST | `/v1/artifacts` | `artifact_create` |
+| DELETE | `/v1/artifacts/{artifact_id}` | `artifact_delete` |
+| GET | `/v1/artifacts/{artifact_id}` | `artifact_get` |
+| PATCH | `/v1/artifacts/{artifact_id}` | `artifact_patch` |
+| POST | `/v1/brain/chat` | `brain_chat` |
+| GET | `/v1/brain/policy` | `brain_policy` |
+| POST | `/v1/brain/route` | `brain_route` |
+| GET | `/v1/brain/status` | `brain_status` |
+| POST | `/v1/brain/stream` | `brain_stream` |
+| POST | `/v1/chat/completions` | `chat_completion` |
+| POST | `/v1/chat/completions-rag` | `chat_with_rag` |
+| GET | `/v1/command-center/overview` | `command_center_overview` |
+| POST | `/v1/compare` | `compare_models` |
+| GET | `/v1/computer/capabilities` | `computer_capabilities_route` |
+| GET | `/v1/computer/observe` | `computer_observe_route` |
+| GET | `/v1/computer/processes` | `computer_processes_route` |
+| GET | `/v1/computer/screenshot` | `computer_screenshot_route` |
+| GET | `/v1/computer/windows` | `computer_windows_route` |
+| GET | `/v1/connections` | `list_connections` |
+| POST | `/v1/connections/{connection_id}/enable` | `set_connection` |
+| POST | `/v1/connections/{connection_id}/test` | `test_connection` |
+| GET | `/v1/conversations` | `list_conversations` |
+| POST | `/v1/conversations` | `create_conversation` |
+| GET | `/v1/conversations/{conv_id}` | `get_conversation` |
+| POST | `/v1/conversations/{conv_id}/messages` | `add_conversation_message` |
+| POST | `/v1/deepgram-speak` | `deepgram_speak` |
+| POST | `/v1/deepgram-speak-stream` | `deepgram_speak_stream` |
+| GET | `/v1/deepgram-status` | `deepgram_status` |
+| POST | `/v1/deepgram-token` | `deepgram_token` |
+| POST | `/v1/documents` | `upload_document` |
+| POST | `/v1/documents/upload-file` | `upload_file` |
 | POST | `/v1/gemini/chat` | `gemini_chat` |
 | POST | `/v1/gemini/live-token` | `gemini_live_token` |
 | GET | `/v1/gemini/status` | `gemini_status` |
+| POST | `/v1/model-lab/benchmark` | `model_lab_benchmark_route` |
+| GET | `/v1/model-lab/huggingface` | `model_lab_huggingface` |
+| POST | `/v1/model-lab/lmstudio/load` | `model_lab_load` |
+| POST | `/v1/model-lab/lmstudio/unload` | `model_lab_unload` |
+| GET | `/v1/model-lab/overview` | `model_lab_overview_route` |
+| GET | `/v1/model-lab/runtimes` | `model_lab_runtimes` |
 | GET | `/v1/models` | `list_models` |
-
-## Telemetry (V24 P5)
-| Method | Path | Handler |
-|---|---|---|
-| GET | `/v1/telemetry/summary` | `telemetry_summary` |
-
-## Conversations / documents
-| Method | Path | Handler |
-|---|---|---|
-| POST | `/v1/conversations` | `create_conversation` |
-| GET | `/v1/conversations` | `list_conversations` |
-| GET | `/v1/conversations/{conv_id}` | `get_conversation` |
-| POST | `/v1/conversations/{conv_id}/messages` | `add_conversation_message` |
-| POST | `/v1/documents` | `upload_document` |
-| POST | `/v1/documents/upload-file` | `upload_file` |
-| POST | `/v1/research/search` | `research_search` |
-
-## Artifacts
-| Method | Path | Handler |
-|---|---|---|
-| POST | `/v1/artifacts` | `artifact_create` |
-| GET | `/v1/artifacts` | `artifacts_list` |
-| GET | `/v1/artifacts/{artifact_id}` | `artifact_get` |
-| PATCH | `/v1/artifacts/{artifact_id}` | `artifact_patch` |
-| DELETE | `/v1/artifacts/{artifact_id}` | `artifact_delete` |
-
-## Voice
-| Method | Path | Handler |
-|---|---|---|
-| POST | `/v1/voice/turn` | `voice_turn` |
-| GET | `/voice`, `/voice-live`, `/voice-live.html`, `/voice-engine.js` | `voice_ui`, `voice_live_ui`, `voice_engine_js` |
-| GET | `/v1/deepgram-status` | `deepgram_status` |
-| POST | `/v1/deepgram-token` | `deepgram_token` |
-| POST | `/v1/deepgram-speak`, `/v1/deepgram-speak-stream` | `deepgram_speak`, `deepgram_speak_stream` |
-
-## Orchestrator (project plans)
-| Method | Path | Handler |
-|---|---|---|
+| POST | `/v1/opencode/task` | `run_opencode_task` |
+| POST | `/v1/orchestrator/autopilot` | `orchestrator_autopilot` |
+| POST | `/v1/orchestrator/execute` | `orchestrator_execute` |
+| POST | `/v1/orchestrator/plan` | `orchestrator_plan` |
 | GET | `/v1/orchestrator/policy` | `orchestrator_policy` |
-| GET | `/v1/orchestrator/targets` | `orchestrator_targets` |
 | GET | `/v1/orchestrator/projects/{project_id}` | `orchestrator_project` |
-| GET | `/v1/orchestrator/projects/{project_id}/next` | `orchestrator_next` |
 | GET | `/v1/orchestrator/projects/{project_id}/audit` | `orchestrator_audit` |
-
-## Project worker
-| Method | Path | Handler |
-|---|---|---|
-| POST | `/v1/project-worker/inspect` | `project_worker_inspect` |
+| GET | `/v1/orchestrator/projects/{project_id}/next` | `orchestrator_next` |
+| GET | `/v1/orchestrator/targets` | `orchestrator_targets` |
+| POST | `/v1/orchestrator/transition` | `orchestrator_transition` |
+| GET | `/v1/performance` | `get_performance` |
+| POST | `/v1/project-worker/autofix` | `project_worker_autofix` |
 | POST | `/v1/project-worker/health` | `project_worker_health` |
-| POST | `/v1/project-worker/verify` | `project_worker_verify` |
 | POST | `/v1/project-worker/implement` | `project_worker_implement` |
+| POST | `/v1/project-worker/inspect` | `project_worker_inspect` |
 | GET | `/v1/project-worker/runs/{run_id}` | `project_worker_run` |
-
-## Tools / computer / model-lab / connections
-| Method | Path | Handler |
-|---|---|---|
-| GET | `/v1/tools`, `/v1/tools/local` | `list_tools`, `local_tools_inventory` |
+| POST | `/v1/project-worker/verify` | `project_worker_verify` |
+| POST | `/v1/research/search` | `research_search` |
+| POST | `/v1/sales/chat` | `sales_chat` |
+| GET | `/v1/system/compute` | `system_compute` |
+| GET | `/v1/system/status` | `system_status` |
+| GET | `/v1/telemetry/events` | `telemetry_events` |
+| GET | `/v1/telemetry/summary` | `telemetry_summary` |
+| GET | `/v1/tools` | `list_tools` |
 | POST | `/v1/tools/execute` | `execute_tool` |
-| GET | `/v1/computer/capabilities|observe|processes|screenshot|windows` | `computer_*_route` |
-| GET | `/v1/model-lab/overview|huggingface|runtimes` | `model_lab_*` |
-| POST | `/v1/model-lab/benchmark|lmstudio/load` | `model_lab_benchmark_route`, `model_lab_load` |
-| GET | `/v1/connections` | `list_connections` |
-| POST | `/v1/connections/{id}/enable|/test` | `set_connection`, `test_connection` |
-
-## Google integrations
-| Method | Path | Handler |
-|---|---|---|
-| GET | `/auth/google/start|callback|status` | `auth_google_*` |
-| POST | `/auth/google/disconnect` | `auth_google_disconnect` |
-| GET | `/gmail/messages`, `/calendar/events` | `gmail_messages`, `calendar_events` |
-
-## UI pages / assets (GET)
-`/dashboard[.html]`, `/dashboard-classic[.html]`, `/godseye[.html]`,
-`/companion`, `/companion-manifest.json`, `/companion-sw.js`,
-`/{orb,bg,command-center}-loop.{mp4,webm}`, `/*-poster.png` → `blender_dashboard_asset`.
+| GET | `/v1/tools/local` | `local_tools_inventory` |
+| POST | `/v1/voice/turn` | `voice_turn` |
+| GET | `/voice` | `voice_ui` |
+| GET | `/voice-engine.js` | `voice_engine_js` |
+| GET | `/voice-live` | `voice_live_ui` |
+| GET | `/voice-live.html` | `voice_live_ui` |

@@ -1,51 +1,114 @@
-# Jarvis OS — Test Report (generated Cycle 7)
+# Jarvis OS — Test Report (V24 release candidate)
 
-## Headline (this cycle, local run)
-- **77 passed, 0 failed** (`python -m pytest -q`, ~4–6 s, Python 3.12.10 win32)
-- CI (`.github/workflows/main.yml`): ruff gates
-  (F401,I001,UP006,UP045,UP035,FURB167,RUF010,RUF022 + S110 for api-gateway/tests)
-  then `pytest -q` with `API_DATA_DIR=./data`. CI green on `main`.
-- Coverage (informational, `pytest-cov`, not gated): **52% total** over `api-gateway`.
+## Headline
+Final local refinement-pass run:
 
-## Coverage by module
-| Module | Cover | Note |
-|---|---|---|
-| orchestrator.py | 95% | state machine well pinned |
-| providers/base.py | 95% | contract surface pinned |
-| security.py | 95% | |
-| intelligence_router.py | 89% | routing/telemetry covered |
-| project_worker.py | 87% | discovery/verify covered |
-| local_tools.py | 81% | |
-| workspace_registry.py | 90% | |
-| compute_manager.py | 57% | GPU paths need hardware |
-| tools.py | 49% | HA/bridge need live services |
-| providers/ollama,openai,opencode | 47–51% | live HTTP paths uncovered (by design: offline CI) |
-| providers/gemini.py | 33% | same |
-| brains.py | 37% | failover loop partially covered |
-| main.py | 38% | 97 routes; smoke-covered only |
-| google_oauth.py | 28% | needs OAuth fixtures |
-| model_lab.py | 19% | needs runtimes (Ollama/LM Studio) |
+- **145 Python tests passed, 0 failed** (`python -m pytest -q`)
+- **19 Node voice tests passed, 0 failed** (`node --test tests/voice-engine.test.js`)
+- `python -m compileall -q api-gateway tests` passed
+- generated report drift check passed
+- YAML parsing passed for all compose files and GitHub Actions workflow
+- total measured Python coverage: **65%**
 
-## Inventory (14 files, 77 tests)
-- `test_orchestrator.py` (4), `test_v201_autopilot.py` (4) — plan/state machine
-- `test_v21_multibrain.py` (7) — routing with fake providers
-- `test_routing_v181.py` (7) — fast-path guards via real `main`
-- `test_voice_turn.py` (9), `test_v18_voice.py` (2) — voice path selection
-- `test_provider_contracts.py` (10, Cycle 3) — offline interface contracts
-- `test_sqlite_lifecycle.py` (3, Cycle 1) — Windows file-lock regression
-- `test_tool_router.py` (5), `test_agent_state.py` (0 test fns — helpers only)
-- `test_v22_project_worker.py` (6), `test_v222_project_worker.py` (4),
-  `test_v221_self_correction.py` (4) — worker/discovery/verify
-- `test_v23_command_center.py` (12) — FastAPI smoke via TestClient + httpx mocks
-- `voice-engine.test.js` (1, node — not run by pytest/CI)
+Environment used for this pass: Linux container, Python 3.13.5, Node 22.16.0.
+GitHub Actions targets Python 3.12 and Node 22.
 
-## Gaps (proposed next coverage work, no gate yet)
-1. `main.py` route smoke: extend TestClient coverage beyond command-center.
-2. `brains.py` failover loop with mocked providers (offline).
-3. `google_oauth.py` with fixture keys (Fernet round-trip, no network).
-4. `voice-engine.test.js` is not wired into CI (needs node job or removal decision).
-5. `test_agent_state.py` collects 0 tests — rename to helper or add tests.
+## Coverage snapshot
+
+| Module | Coverage | Notes |
+|---|---:|---|
+| orchestrator.py | 95% | deterministic state machine strongly pinned |
+| providers/base.py | 95% | adapter contract |
+| telemetry_collector.py | 95% | lifecycle counters/recent-event ring |
+| deps.py | 93% | container/config compatibility layer |
+| workspace_registry.py | 93% | registered target safety |
+| intelligence_router.py | 89% | selection/fallback/circuit logic |
+| project_worker.py | 87% | inspect/verify/baseline/fixture flow |
+| events.py | 87% | typed bus, wildcard listeners, async handlers |
+| main.py | 82% | composition/lifecycle/middleware |
+| brains.py | 77% | provider execution/failover |
+| store.py | 72% | short-lived SQLite + RAG |
+| services.py | 69% | broad service layer; live/tool branches remain |
+| compute_manager.py | 67% | hardware-dependent branches |
+| model_lab.py | 67% | runtime-dependent branches |
+| live provider implementations | 33–52% | real network paths intentionally offline in CI |
+| route adapters | 21–88% | core smoke/contract paths covered; live integrations vary |
+
+**Overall:** 65% over `api-gateway` (4,183 statements, 1,460 missed in this run).
+Coverage is strongest around orchestration, routing, security boundaries,
+telemetry, and Project Worker—the areas where deterministic behavior matters
+most. Lower totals are dominated by live cloud/device/OAuth branches that are
+not safe or deterministic to require in offline CI.
+
+## New release-candidate regression coverage
+
+### Composition/lifecycle
+- `.env` bootstrap occurs before config imports.
+- app version is a single source of truth.
+- FastAPI lifespan publishes the container/event bus/telemetry objects.
+- lazy compatibility proxies defer durable service construction.
+- container shutdown evicts instances for a clean restart.
+
+### Event/telemetry plane
+- catch-all lifecycle event subscription.
+- provider/task/worker counters.
+- verification, health, and memory event counters.
+- idempotent telemetry attachment/detachment.
+- stable process bus identity (prevents stale imported bus references).
+- verified worker runs now emit terminal `WorkerCompleted` events.
+- live SSE telemetry route is registered and wired into the dashboard.
+
+### Project Worker fixture
+A deterministic fixture repository now executes the whole local verification
+story in one test:
+
+`inspect → baseline → failing verification → code classification → minimal
+repair → diff evidence → targeted re-verification → pass`.
+
+This closes the prior gap where those primitives were individually tested but
+not exercised as one repository workflow.
+
+## CI (`.github/workflows/main.yml`)
+
+CI now runs:
+
+1. Python 3.12 setup
+2. Node 22 setup
+3. pinned gateway dependencies + pytest + Ruff
+4. Ruff import/upgrade/style gates
+5. Ruff silent-exception gate
+6. all Python tests
+7. Node voice-engine tests
+8. Python compileall
+9. generated-report drift check
+
+## Offline limitations / production checks
+
+The following are not truthfully validated by this container and must be
+verified on the target Windows host before production release:
+
+- Docker Compose runtime (`docker` is not installed in this build environment)
+- NVIDIA GPU / Ollama real inference
+- configured Gemini/OpenAI/Deepgram calls
+- Google OAuth redirect/consent flow
+- Windows Host Bridge computer control
+- Home Assistant device connectivity
+- real OpenCode server execution
+
+These are host/integration acceptance checks, not hidden test failures.
+
+## Dependency/environment note
+`python -m pip check` reported a Pillow/MoviePy conflict in the shared build
+container. Neither MoviePy nor Pillow is part of `api-gateway/requirements.txt`,
+so this is not a Jarvis dependency conflict. Jarvis gateway dependencies remain
+explicitly pinned in their own requirements file.
 
 ## Reproduce
-`pip install -r api-gateway/requirements.txt pytest pytest-cov`
-`python -m pytest -q` · `python -m pytest -q --cov=api-gateway --cov-report=term-missing`
+
+```bash
+python -m pytest -q
+python -m pytest -q --cov=api-gateway --cov-report=term-missing
+node --test tests/voice-engine.test.js
+python -m compileall -q api-gateway tests
+python tools/generate_repo_reports.py --check
+```

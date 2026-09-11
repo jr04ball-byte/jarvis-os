@@ -1,153 +1,267 @@
-jarvis-os-work/ (commit: see git log; generated Cycle 7)
-|-- .github
-|   `-- workflows
-|       `-- main.yml
-|-- api-gateway
-|   |-- assets
-|   |   |-- bg-loop.mp4
-|   |   |-- bg-loop.webm
-|   |   |-- bg-poster.png
-|   |   |-- command-center-loop.mp4
-|   |   |-- command-center-loop.webm
-|   |   |-- command-center-poster.png
-|   |   |-- orb-loop.mp4
-|   |   |-- orb-loop.webm
-|   |   `-- orb-poster.png
-|   |-- providers
-|   |   |-- __init__.py
-|   |   |-- base.py
-|   |   |-- gemini.py
-|   |   |-- ollama.py
-|   |   |-- openai_provider.py
-|   |   `-- opencode.py
-|   |-- .dockerignore
-|   |-- brains.py
-|   |-- companion-manifest.json
-|   |-- companion-sw.js
-|   |-- companion.html
-|   |-- compute_manager.py
-|   |-- dashboard-classic.html
-|   |-- dashboard.html
-|   |-- Dockerfile
-|   |-- godseye.html
-|   |-- google_oauth.py
-|   |-- intelligence_router.py
-|   |-- local_tools.py
-|   |-- main.py
-|   |-- model_lab.py
-|   |-- orchestrator.py
-|   |-- project_worker.py
-|   |-- requirements.txt
-|   |-- security.py
-|   |-- tools.py
-|   |-- voice-engine.js
-|   |-- voice-live.html
-|   |-- voice.html
-|   `-- workspace_registry.py
-|-- desktop-companion
-|   |-- index.html
-|   |-- main.cjs
-|   |-- package.json
-|   |-- preload.cjs
-|   |-- renderer.js
-|   `-- styles.css
-|-- host-bridge
-|   |-- host_bridge.py
-|   |-- requirements.txt
-|   `-- start-host-bridge.bat
-|-- ios-companion
-|   |-- AICompanion.swift
-|   `-- README.md
-|-- librechat
-|   |-- docker-compose.yml
-|   `-- librechat.yaml
-|-- reports
-|-- tests
-|   |-- test_agent_state.py
-|   |-- test_orchestrator.py
-|   |-- test_provider_contracts.py
-|   |-- test_routing_v181.py
-|   |-- test_sqlite_lifecycle.py
-|   |-- test_tool_router.py
-|   |-- test_v18_voice.py
-|   |-- test_v201_autopilot.py
-|   |-- test_v21_multibrain.py
-|   |-- test_v221_self_correction.py
-|   |-- test_v222_project_worker.py
-|   |-- test_v22_project_worker.py
-|   |-- test_v23_command_center.py
-|   |-- test_voice_turn.py
-|   `-- voice-engine.test.js
-|-- tools
-|   |-- blender_bg_bake.py
-|   |-- blender_command_center_bake.py
-|   `-- blender_orb_bake.py
-|-- .coverage
-|-- .env.example
-|-- .gitignore
-|-- AI-Launcher.bat
-|-- AI-System-Core.bat
-|-- AI-System.bat
-|-- BAKE-JARVIS-DASHBOARD.bat
-|-- build-windows-app.bat
-|-- client.py
-|-- complete-setup.bat
-|-- CONNECT-GMAIL.bat
-|-- create-desktop-shortcut.bat
-|-- CREATE-JARVIS-DESKTOP-SHORTCUT.bat
-|-- create-shortcut.vbs
-|-- DEEPGRAM-VOICE-SETUP.txt
-|-- docker-compose.lan.yml
-|-- docker-compose.override.yml
-|-- docker-compose.yml
-|-- IMPROVEMENT_GUIDE.md
-|-- install-core-app.bat
-|-- INSTALL-JARVIS-V15.bat
-|-- install.bat
-|-- install.sh
-|-- KEEP-YOUR-ENV.txt
-|-- launcher-config.example.json
-|-- launcher.py
-|-- LOCAL-TOOLS.md
-|-- Modelfile.llama
-|-- OAUTH_README.md
-|-- OPEN-JARVIS.bat
-|-- package.json
-|-- README.md
-|-- requirements-launcher.txt
-|-- SET-DEEPGRAM-KEY.bat
-|-- SET-GEMINI-CLOUD.bat
-|-- SET-QWEN35-9B.bat
-|-- setup-docker.bat
-|-- setup-launcher.bat
-|-- start-ai.bat
-|-- START-DESKTOP-COMPANION.bat
-|-- START-HOST-BRIDGE-ADMIN.bat
-|-- START-JARVIS-GODSEYE.bat
-|-- START-JARVIS.bat
-|-- START-LOCAL-TEST.bat
-|-- STOP-LOCAL-TEST.bat
-|-- TEST-DASHBOARD.bat
-|-- TEST-INSTRUCTIONS.txt
-|-- TEST-JARVIS-V23.bat
-|-- V13-JARVIS-UPDATE.md
-|-- V14-JARVIS-UPDATE.md
-|-- V15-JARVIS-DASHBOARD-UPDATE.md
-|-- V16-ADAPTIVE-COMPUTE-UPDATE.md
-|-- V16-MODEL-LAB-UPDATE.md
-|-- V17-SMART-MODEL-ROUTER.md
-|-- V18-NATURAL-VOICE-UPDATE.md
-|-- V18.1-ROUTING-FIX.md
-|-- V18.2-ADAPTIVE-VOICE.md
-|-- V18.2.1-VOICE-FIX.md
-|-- V19-WINDOWS-COMPUTER-CONTROL.md
-|-- V20-JARVIS-ORCHESTRATOR.md
-|-- V20.1-JARVIS-AUTOPILOT.md
-|-- V20.2-JARVIS-PROJECT-WORKER.md
-|-- V21-MULTI-BRAIN-INTELLIGENCE-ROUTER.md
-|-- V22-JARVIS-PROJECT-WORKER.md
-|-- V22.1-JARVIS-SELF-CORRECTION.md
-|-- V22.2-JARVIS-AUTOPILOT-INTEGRATION.md
-|-- V23-JARVIS-COMMAND-CENTER-STABILITY.md
-|-- V24-MAIN-DECOMPOSITION-PROPOSAL.md
-`-- verify-local-ai.py
+# Jarvis OS repository tree (generated)
+.
+- .env.example
+- .github/
+  - .github/workflows/
+    - .github/workflows/main.yml
+- .gitignore
+- .ruff_cache/
+  - .ruff_cache/.gitignore
+  - .ruff_cache/0.16.7/
+    - .ruff_cache/0.16.7/10252423973674401346
+    - .ruff_cache/0.16.7/10604275896440095119
+    - .ruff_cache/0.16.7/10735734202458793837
+    - .ruff_cache/0.16.7/10962205939726074292
+    - .ruff_cache/0.16.7/11053539211054436675
+    - .ruff_cache/0.16.7/11061138310840666016
+    - .ruff_cache/0.16.7/1157791157634697039
+    - .ruff_cache/0.16.7/11609673546117403721
+    - .ruff_cache/0.16.7/11696439109185988995
+    - .ruff_cache/0.16.7/11919121569385859557
+    - .ruff_cache/0.16.7/12095391390366814096
+    - .ruff_cache/0.16.7/1229565945985404788
+    - .ruff_cache/0.16.7/12355087664510515453
+    - .ruff_cache/0.16.7/12434239029337245341
+    - .ruff_cache/0.16.7/12519659958910534223
+    - .ruff_cache/0.16.7/12528725256443693746
+    - .ruff_cache/0.16.7/13311556672918455062
+    - .ruff_cache/0.16.7/13748123224131760954
+    - .ruff_cache/0.16.7/14502486835279240239
+    - .ruff_cache/0.16.7/14741634604755675555
+    - .ruff_cache/0.16.7/15089164682354784739
+    - .ruff_cache/0.16.7/15141807103440574122
+    - .ruff_cache/0.16.7/15643716503343738878
+    - .ruff_cache/0.16.7/16472997351086991658
+    - .ruff_cache/0.16.7/1651485632987693434
+    - .ruff_cache/0.16.7/16688724947322900177
+    - .ruff_cache/0.16.7/16731450786526989903
+    - .ruff_cache/0.16.7/16801993582744957666
+    - .ruff_cache/0.16.7/17655784132411527102
+    - .ruff_cache/0.16.7/17911444423277561967
+    - .ruff_cache/0.16.7/17995793037133481961
+    - .ruff_cache/0.16.7/18422710046268978794
+    - .ruff_cache/0.16.7/2871945637097728296
+    - .ruff_cache/0.16.7/3068338145619072202
+    - .ruff_cache/0.16.7/3088985739846627769
+    - .ruff_cache/0.16.7/357863452655337863
+    - .ruff_cache/0.16.7/3579405749701347330
+    - .ruff_cache/0.16.7/3770833052238557253
+    - .ruff_cache/0.16.7/3872762359546652679
+    - .ruff_cache/0.16.7/3915171822512932983
+    - .ruff_cache/0.16.7/4406866842976482737
+    - .ruff_cache/0.16.7/4441282093929414154
+    - .ruff_cache/0.16.7/457822726801669589
+    - .ruff_cache/0.16.7/5154962719688166037
+    - .ruff_cache/0.16.7/5422506228892214421
+    - .ruff_cache/0.16.7/5648926715441272781
+    - .ruff_cache/0.16.7/6009570919009122547
+    - .ruff_cache/0.16.7/6062331929934378526
+    - .ruff_cache/0.16.7/6114487343959371696
+    - .ruff_cache/0.16.7/63386854292213273
+    - .ruff_cache/0.16.7/6339650703662762736
+    - .ruff_cache/0.16.7/681268621345122666
+    - .ruff_cache/0.16.7/7677156320144290336
+    - .ruff_cache/0.16.7/7792965125016069793
+    - .ruff_cache/0.16.7/8436615013059689966
+    - .ruff_cache/0.16.7/8454076542765940851
+    - .ruff_cache/0.16.7/8568567928661121905
+    - .ruff_cache/0.16.7/8715128397249409743
+    - .ruff_cache/0.16.7/8809878046086728354
+    - .ruff_cache/0.16.7/8862718941790875730
+    - .ruff_cache/0.16.7/9125558123254666118
+    - .ruff_cache/0.16.7/9386451278078222429
+    - .ruff_cache/0.16.7/9756378025428755315
+  - .ruff_cache/CACHEDIR.TAG
+- AI-Launcher.bat
+- AI-System-Core.bat
+- AI-System.bat
+- api-gateway/
+  - api-gateway/.dockerignore
+  - api-gateway/assets/
+    - api-gateway/assets/bg-loop.mp4
+    - api-gateway/assets/bg-loop.webm
+    - api-gateway/assets/bg-poster.png
+    - api-gateway/assets/command-center-loop.mp4
+    - api-gateway/assets/command-center-loop.webm
+    - api-gateway/assets/command-center-poster.png
+    - api-gateway/assets/orb-loop.mp4
+    - api-gateway/assets/orb-loop.webm
+    - api-gateway/assets/orb-poster.png
+  - api-gateway/brains.py
+  - api-gateway/companion-manifest.json
+  - api-gateway/companion-sw.js
+  - api-gateway/companion.html
+  - api-gateway/compute_manager.py
+  - api-gateway/dashboard-classic.html
+  - api-gateway/dashboard.html
+  - api-gateway/deps.py
+  - api-gateway/Dockerfile
+  - api-gateway/events.py
+  - api-gateway/godseye.html
+  - api-gateway/google_oauth.py
+  - api-gateway/intelligence_router.py
+  - api-gateway/local_tools.py
+  - api-gateway/main.py
+  - api-gateway/model_lab.py
+  - api-gateway/orchestrator.py
+  - api-gateway/project_worker.py
+  - api-gateway/providers/
+    - api-gateway/providers/__init__.py
+    - api-gateway/providers/base.py
+    - api-gateway/providers/gemini.py
+    - api-gateway/providers/ollama.py
+    - api-gateway/providers/openai_provider.py
+    - api-gateway/providers/opencode.py
+  - api-gateway/requirements.txt
+  - api-gateway/routes/
+    - api-gateway/routes/__init__.py
+    - api-gateway/routes/auth.py
+    - api-gateway/routes/chat.py
+    - api-gateway/routes/dashboard.py
+    - api-gateway/routes/health.py
+    - api-gateway/routes/projects.py
+    - api-gateway/routes/providers.py
+    - api-gateway/routes/telemetry.py
+    - api-gateway/routes/voice.py
+    - api-gateway/routes/workers.py
+  - api-gateway/schemas.py
+  - api-gateway/security.py
+  - api-gateway/services.py
+  - api-gateway/store.py
+  - api-gateway/telemetry_collector.py
+  - api-gateway/tools.py
+  - api-gateway/voice-engine.js
+  - api-gateway/voice-live.html
+  - api-gateway/voice.html
+  - api-gateway/workspace_registry.py
+- BAKE-JARVIS-DASHBOARD.bat
+- build-windows-app.bat
+- client.py
+- complete-setup.bat
+- CONNECT-GMAIL.bat
+- create-desktop-shortcut.bat
+- CREATE-JARVIS-DESKTOP-SHORTCUT.bat
+- create-shortcut.vbs
+- DEEPGRAM-VOICE-SETUP.txt
+- desktop-companion/
+  - desktop-companion/index.html
+  - desktop-companion/main.cjs
+  - desktop-companion/package.json
+  - desktop-companion/preload.cjs
+  - desktop-companion/renderer.js
+  - desktop-companion/styles.css
+- docker-compose.lan.yml
+- docker-compose.override.yml
+- docker-compose.yml
+- host-bridge/
+  - host-bridge/host_bridge.py
+  - host-bridge/requirements.txt
+  - host-bridge/start-host-bridge.bat
+- IMPROVEMENT_GUIDE.md
+- install-core-app.bat
+- INSTALL-JARVIS-V15.bat
+- install.bat
+- install.sh
+- ios-companion/
+  - ios-companion/AICompanion.swift
+  - ios-companion/README.md
+- KEEP-YOUR-ENV.txt
+- launcher-config.example.json
+- launcher.py
+- librechat/
+  - librechat/docker-compose.yml
+  - librechat/librechat.yaml
+- LOCAL-TOOLS.md
+- Modelfile.llama
+- OAUTH_README.md
+- OPEN-JARVIS.bat
+- package.json
+- README.md
+- reports/
+  - reports/api-map.md
+  - reports/architecture.md
+  - reports/dependency-graph.md
+  - reports/providers.md
+  - reports/repo-metrics.json
+  - reports/repo-tree.txt
+  - reports/test-report.md
+  - reports/worker-engine.md
+- requirements-launcher.txt
+- SET-DEEPGRAM-KEY.bat
+- SET-GEMINI-CLOUD.bat
+- SET-QWEN35-9B.bat
+- setup-docker.bat
+- setup-launcher.bat
+- start-ai.bat
+- START-DESKTOP-COMPANION.bat
+- START-HOST-BRIDGE-ADMIN.bat
+- START-JARVIS-GODSEYE.bat
+- START-JARVIS.bat
+- START-LOCAL-TEST.bat
+- STOP-LOCAL-TEST.bat
+- TEST-DASHBOARD.bat
+- TEST-INSTRUCTIONS.txt
+- TEST-JARVIS-V23.bat
+- tests/
+  - tests/fixtures/
+    - tests/fixtures/project_worker_repo/
+      - tests/fixtures/project_worker_repo/calculator.py
+      - tests/fixtures/project_worker_repo/pytest.ini
+      - tests/fixtures/project_worker_repo/README.md
+      - tests/fixtures/project_worker_repo/tests/
+        - tests/fixtures/project_worker_repo/tests/calculator_spec.py
+  - tests/test_agent_loop.py
+  - tests/test_agent_state.py
+  - tests/test_app_lifecycle.py
+  - tests/test_auth_gate.py
+  - tests/test_autofix_cycle.py
+  - tests/test_brains_failover.py
+  - tests/test_container.py
+  - tests/test_events.py
+  - tests/test_model_lab.py
+  - tests/test_oauth_store.py
+  - tests/test_orchestrator.py
+  - tests/test_project_worker_fixture_e2e.py
+  - tests/test_provider_contracts.py
+  - tests/test_routing_v181.py
+  - tests/test_services_advanced.py
+  - tests/test_services_unit.py
+  - tests/test_sqlite_lifecycle.py
+  - tests/test_telemetry.py
+  - tests/test_tool_router.py
+  - tests/test_v18_voice.py
+  - tests/test_v201_autopilot.py
+  - tests/test_v21_multibrain.py
+  - tests/test_v221_self_correction.py
+  - tests/test_v222_project_worker.py
+  - tests/test_v22_project_worker.py
+  - tests/test_v23_command_center.py
+  - tests/test_voice_turn.py
+  - tests/voice-engine.test.js
+- tools/
+  - tools/blender_bg_bake.py
+  - tools/blender_command_center_bake.py
+  - tools/blender_orb_bake.py
+  - tools/generate_repo_reports.py
+- V13-JARVIS-UPDATE.md
+- V14-JARVIS-UPDATE.md
+- V15-JARVIS-DASHBOARD-UPDATE.md
+- V16-ADAPTIVE-COMPUTE-UPDATE.md
+- V16-MODEL-LAB-UPDATE.md
+- V17-SMART-MODEL-ROUTER.md
+- V18-NATURAL-VOICE-UPDATE.md
+- V18.1-ROUTING-FIX.md
+- V18.2-ADAPTIVE-VOICE.md
+- V18.2.1-VOICE-FIX.md
+- V19-WINDOWS-COMPUTER-CONTROL.md
+- V20-JARVIS-ORCHESTRATOR.md
+- V20.1-JARVIS-AUTOPILOT.md
+- V20.2-JARVIS-PROJECT-WORKER.md
+- V21-MULTI-BRAIN-INTELLIGENCE-ROUTER.md
+- V22-JARVIS-PROJECT-WORKER.md
+- V22.1-JARVIS-SELF-CORRECTION.md
+- V22.2-JARVIS-AUTOPILOT-INTEGRATION.md
+- V23-JARVIS-COMMAND-CENTER-STABILITY.md
+- V24-MAIN-DECOMPOSITION-PROPOSAL.md
+- V24-RELEASE-CANDIDATE.md
+- verify-local-ai.py

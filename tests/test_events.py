@@ -198,11 +198,33 @@ def test_brains_emits_selected_and_failed(monkeypatch):
         events.bus.unsubscribe(ProviderFailed, seen.append)
 
 
-def test_global_bus_reset_gives_isolation():
+def test_global_bus_identity_is_stable_across_legacy_reset_call():
     first = events.bus
-    fresh = events.reset_bus()
+    assert events.reset_bus() is first
+
+
+def test_base_event_subscription_receives_all_typed_events_once():
+    from events import Event
+
+    bus = EventBus()
+    seen = []
+    bus.subscribe(Event, seen.append)
+    bus.emit(TaskQueued(project_id="p", task_id="t"))
+    bus.emit(ProviderSelected(provider="gemini", model="m", reason="r"))
+    assert [event.name for event in seen] == ["task.queued", "provider.selected"]
+
+
+def test_worker_verified_is_terminal_lifecycle_event(tmp_path):
+    from project_worker import WorkerRunStore
+
+    store = WorkerRunStore(str(tmp_path / "verified_runs.db"))
+    seen = []
+    events.bus.subscribe(WorkerCompleted, seen.append)
     try:
-        assert fresh is not first
-        assert fresh.subscribers(TaskCompleted) == []
+        run = store.create("email_agent", "repo", "verify terminal event", {})
+        store.update(run["id"], status="verified", attempt={"ok": True})
+        assert len(seen) == 1
+        assert seen[0].status == "verified"
+        assert seen[0].attempt_count == 1
     finally:
-        events.reset_bus()
+        events.bus.unsubscribe(WorkerCompleted, seen.append)

@@ -78,7 +78,7 @@ def test_dashboard_is_self_contained_and_has_all_command_views():
     for view in ("view-overview", "view-projects", "view-router", "view-autopilot", "view-approvals", "view-memory"):
         assert f'id="{view}"' in html
     assert "/command-center-loop.webm" in html
-    assert "JARVIS V23" in html
+    assert "JARVIS V24" in html
     assert "https://" not in html
 
 
@@ -127,11 +127,11 @@ def test_fastapi_v23_smoke_and_dashboard_assets(monkeypatch):
 
     live = client.get("/health")
     assert live.status_code == 200
-    assert live.json()["version"] == "23.0.0"
+    assert live.json()["version"] == main.APP_VERSION
 
     dashboard = client.get("/dashboard")
     assert dashboard.status_code == 200
-    assert "JARVIS V23" in dashboard.text
+    assert "JARVIS V24" in dashboard.text
 
     godseye = client.get("/godseye")
     assert godseye.status_code == 200
@@ -169,7 +169,7 @@ def test_command_center_overview_is_redacted(monkeypatch):
     response = client.get("/v1/command-center/overview")
     assert response.status_code == 200
     payload = response.json()
-    assert payload["version"] == "23.0.0"
+    assert payload["version"] == main.APP_VERSION
     assert payload["quality"]["provider_success_rate"] == 75.0
     assert "Jarvis owns" in payload["authority"]
     assert secret not in response.text
