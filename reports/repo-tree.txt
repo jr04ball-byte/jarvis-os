@@ -194,6 +194,7 @@
   - test_v23_command_center.py
   - test_v25.py
   - test_voice_turn.py
+  - test_weather.py
   - voice-engine.test.js
 - tools/
   - adopt_v25.py

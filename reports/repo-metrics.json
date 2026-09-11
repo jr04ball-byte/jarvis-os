@@ -19,6 +19,10 @@
       "path": "api-gateway/routes/projects.py"
     },
     {
+      "lines": 300,
+      "path": "api-gateway/routes/telemetry.py"
+    },
+    {
       "lines": 298,
       "path": "api-gateway/routes/workers.py"
     },
@@ -37,10 +41,6 @@
     {
       "lines": 273,
       "path": "api-gateway/routes/voice.py"
-    },
-    {
-      "lines": 264,
-      "path": "api-gateway/brains.py"
     }
   ],
   "local_dependency_edges": {
@@ -167,8 +167,8 @@
   "local_import_cycle_count": 0,
   "local_import_cycles": [],
   "main_py_lines": 185,
-  "python_test_files": 30,
-  "registered_routes": 100,
+  "python_test_files": 31,
+  "registered_routes": 101,
   "route_groups": {
     "activity": 1,
     "agent": 3,
@@ -216,7 +216,8 @@
     "voice": 3,
     "voice-engine.js": 1,
     "voice-live": 1,
-    "voice-live.html": 1
+    "voice-live.html": 1,
+    "weather": 1
   },
   "services_py_lines": 952
 }
