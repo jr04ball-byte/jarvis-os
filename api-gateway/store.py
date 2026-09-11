@@ -94,6 +94,9 @@ class ConversationDB:
                 (conv_id, role, content)
             )
 
+        from events import MemoryUpdated, bus
+        bus.emit(MemoryUpdated(scope="conversation", key=str(conv_id)))
+
     def get_conversation(self, conv_id: int, limit: int | None = None):
         with self._lock, self._connect() as conn:
             if limit is None:
@@ -190,6 +193,8 @@ class DocumentRAG:
             )
         self.documents[doc_id] = text
         self._rebuild_index()
+        from events import MemoryUpdated, bus
+        bus.emit(MemoryUpdated(scope="document"))
         logger.info(f"Added document: {doc_id} (total: {len(self.doc_ids)})")
 
     def search(self, query: str, n_results: int = 3):

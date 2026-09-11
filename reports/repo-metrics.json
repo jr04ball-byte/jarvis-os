@@ -1,13 +1,13 @@
 {
-  "api_gateway_python_files": 34,
-  "app_version": "24.0.0-rc1",
+  "api_gateway_python_files": 37,
+  "app_version": "25.0.0-rc1",
   "largest_python_modules": [
     {
-      "lines": 915,
+      "lines": 952,
       "path": "api-gateway/services.py"
     },
     {
-      "lines": 628,
+      "lines": 632,
       "path": "api-gateway/project_worker.py"
     },
     {
@@ -35,15 +35,18 @@
       "path": "api-gateway/google_oauth.py"
     },
     {
-      "lines": 260,
-      "path": "api-gateway/brains.py"
+      "lines": 262,
+      "path": "api-gateway/routes/telemetry.py"
     },
     {
-      "lines": 248,
-      "path": "api-gateway/store.py"
+      "lines": 260,
+      "path": "api-gateway/brains.py"
     }
   ],
   "local_dependency_edges": {
+    "activity": [
+      "events"
+    ],
     "brains": [
       "events",
       "intelligence_router"
@@ -54,11 +57,16 @@
       "store"
     ],
     "main": [
+      "activity",
       "brains",
       "deps",
       "events",
+      "maintenance",
       "store",
       "telemetry_collector"
+    ],
+    "maintenance": [
+      "events"
     ],
     "orchestrator": [
       "events",
@@ -76,6 +84,12 @@
     "routes.chat": [
       "compute_manager",
       "deps",
+      "schemas",
+      "services"
+    ],
+    "routes.companion": [
+      "deps",
+      "routes.workers",
       "schemas",
       "services"
     ],
@@ -126,16 +140,22 @@
       "workspace_registry"
     ],
     "services": [
+      "activity",
       "brains",
       "compute_manager",
       "deps",
+      "events",
       "google_oauth",
       "local_tools",
+      "maintenance",
       "project_worker",
       "schemas",
       "security",
       "tools",
       "workspace_registry"
+    ],
+    "store": [
+      "events"
     ],
     "telemetry_collector": [
       "events"
@@ -143,10 +163,11 @@
   },
   "local_import_cycle_count": 0,
   "local_import_cycles": [],
-  "main_py_lines": 170,
-  "python_test_files": 27,
-  "registered_routes": 102,
+  "main_py_lines": 185,
+  "python_test_files": 28,
+  "registered_routes": 107,
   "route_groups": {
+    "activity": 1,
     "agent": 3,
     "artifacts": 5,
     "auth": 4,
@@ -160,7 +181,7 @@
     "command-center-loop.mp4": 1,
     "command-center-loop.webm": 1,
     "command-center-poster.png": 1,
-    "companion": 1,
+    "companion": 4,
     "companion-manifest.json": 1,
     "companion-sw.js": 1,
     "compare": 1,
@@ -179,6 +200,7 @@
     "gemini": 3,
     "gmail": 1,
     "health": 1,
+    "maintenance": 1,
     "model-lab": 6,
     "models": 1,
     "opencode": 1,
@@ -201,5 +223,5 @@
     "voice-live": 1,
     "voice-live.html": 1
   },
-  "services_py_lines": 915
+  "services_py_lines": 952
 }

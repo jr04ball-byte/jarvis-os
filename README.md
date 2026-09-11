@@ -1,3 +1,7 @@
+# Jarvis OS V25 RC1
+
+See [V25 release and adoption guide](V25-RELEASE.md) for current behavior, setup, and validation. Earlier version notes below describe the supplied V24 baseline.
+
 # Jarvis OS V24 Release Candidate
 
 Jarvis OS is a local-first AI operating system and automation control plane. It

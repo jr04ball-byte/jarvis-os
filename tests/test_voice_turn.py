@@ -65,8 +65,8 @@ def test_dashboard_uses_engine_and_streaming_turn():
     dash = (Path(__file__).resolve().parents[1] / 'api-gateway' / 'dashboard.html').read_text(encoding='utf-8')
     assert 'JarvisVoiceConsole' in dash
     assert 'openVoiceConsole' in dash
-    assert '/voice-live.html' in dash
-    assert 'LAUNCH LIVE DUPLEX MIC' in dash
+    assert "'/voice'" in dash
+    assert 'PUSH TO TALK' in dash
 
 
 def test_voice_console_uses_engine_and_turn():
@@ -84,3 +84,4 @@ def test_voice_console_uses_engine_and_turn():
     assert '/v1/voice/turn' in page
     assert 'X-Voice-Model' in (Path(__file__).resolve().parents[1] / 'api-gateway' / 'routes' / 'voice.py').read_text(encoding='utf-8')
     assert 'speechFrames' in (Path(__file__).resolve().parents[1] / 'api-gateway' / 'voice-engine.js').read_text(encoding='utf-8')
+

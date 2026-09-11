@@ -77,8 +77,8 @@ def test_dashboard_is_self_contained_and_has_all_command_views():
     html = (ROOT / "api-gateway" / "dashboard.html").read_text(encoding="utf-8")
     for view in ("view-overview", "view-projects", "view-router", "view-autopilot", "view-approvals", "view-memory"):
         assert f'id="{view}"' in html
-    assert "/command-center-loop.webm" in html
-    assert "JARVIS V24" in html
+    assert 'id="activityState"' in html
+    assert "JARVIS V25" in html
     assert "https://" not in html
 
 
@@ -131,7 +131,7 @@ def test_fastapi_v23_smoke_and_dashboard_assets(monkeypatch):
 
     dashboard = client.get("/dashboard")
     assert dashboard.status_code == 200
-    assert "JARVIS V24" in dashboard.text
+    assert "JARVIS V25" in dashboard.text
 
     godseye = client.get("/godseye")
     assert godseye.status_code == 404
@@ -176,45 +176,11 @@ def test_command_center_overview_is_redacted(monkeypatch):
     assert all("arguments" not in item and "args" not in item for item in payload["approvals"]["items"])
 
 
-def test_live_token_endpoint_returns_only_ephemeral_credential(monkeypatch):
-    import importlib
-
+def test_live_token_endpoint_disabled_in_v25():
+    import main
     from fastapi.testclient import TestClient
-
-    main = importlib.import_module("main")
-    chat = importlib.import_module("routes.chat")
-    permanent = "PERMANENT_GEMINI_KEY_SENTINEL"
-    monkeypatch.setattr(chat, "GEMINI_API_KEY", permanent)
-
-    class FakeResponse:
-        status_code = 200
-        text = '{"name":"ephemeral-test-token"}'
-        def json(self):
-            return {"name": "ephemeral-test-token", "expireTime": "2099-01-01T00:00:00Z"}
-
-    class FakeAsyncClient:
-        def __init__(self, *args, **kwargs):
-            pass
-        async def __aenter__(self):
-            return self
-        async def __aexit__(self, *args):
-            return False
-        async def post(self, url, *, headers=None, json=None, **kwargs):
-            assert url.endswith("/auth_tokens")
-            assert headers.get("x-goog-api-key") == permanent
-            assert json["uses"] == 1
-            return FakeResponse()
-
-    monkeypatch.setattr(chat.httpx, "AsyncClient", FakeAsyncClient)
-    client = TestClient(main.app)
-    response = client.post("/v1/gemini/live-token", json={"ttl_minutes": 10})
-    assert response.status_code == 200
-    payload = response.json()
-    assert payload["token"] == "ephemeral-test-token"
-    assert payload["token"] != permanent
-    assert payload["token_type"] == "ephemeral"
-    assert "BidiGenerateContentConstrained" in payload["ws_url"]
-    assert permanent not in response.text
+    response = TestClient(main.app).post('/v1/gemini/live-token', json={})
+    assert response.status_code == 410
 
 
 def test_legacy_opencode_write_endpoint_fails_closed():

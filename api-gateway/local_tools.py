@@ -33,13 +33,16 @@ def _candidates(env_names: list[str], paths: list[str]) -> list[Path]:
 
 def _first_file(paths: list[Path], names: list[str] | None = None) -> Path | None:
     for p in paths:
-        if p.is_file():
-            return p
-        if p.is_dir() and names:
-            for name in names:
-                candidate = p / name
-                if candidate.is_file():
-                    return candidate
+        try:
+            if p.is_file():
+                return p
+            if p.is_dir() and names:
+                for name in names:
+                    candidate = p / name
+                    if candidate.is_file():
+                        return candidate
+        except OSError:
+            continue
     return None
 
 

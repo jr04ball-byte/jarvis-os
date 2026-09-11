@@ -10,6 +10,7 @@
 - AI-System.bat
 - api-gateway/
   - api-gateway/.dockerignore
+  - api-gateway/activity.py
   - api-gateway/assets/
     - api-gateway/assets/bg-loop.mp4
     - api-gateway/assets/bg-loop.webm
@@ -34,6 +35,7 @@
   - api-gateway/intelligence_router.py
   - api-gateway/local_tools.py
   - api-gateway/main.py
+  - api-gateway/maintenance.py
   - api-gateway/model_lab.py
   - api-gateway/orchestrator.py
   - api-gateway/project_worker.py
@@ -44,11 +46,13 @@
     - api-gateway/providers/ollama.py
     - api-gateway/providers/openai_provider.py
     - api-gateway/providers/opencode.py
+  - api-gateway/ptt.html
   - api-gateway/requirements.txt
   - api-gateway/routes/
     - api-gateway/routes/__init__.py
     - api-gateway/routes/auth.py
     - api-gateway/routes/chat.py
+    - api-gateway/routes/companion.py
     - api-gateway/routes/dashboard.py
     - api-gateway/routes/health.py
     - api-gateway/routes/projects.py
@@ -97,6 +101,7 @@
 - ios-companion/
   - ios-companion/AICompanion.swift
   - ios-companion/README.md
+  - ios-companion/V25-BACKEND.md
 - KEEP-YOUR-ENV.txt
 - launcher-config.example.json
 - launcher.py
@@ -117,6 +122,7 @@
   - reports/repo-metrics.json
   - reports/repo-tree.txt
   - reports/test-report.md
+  - reports/v25-validation.md
   - reports/worker-engine.md
 - requirements-launcher.txt
 - SET-DEEPGRAM-KEY.bat
@@ -141,6 +147,7 @@
       - tests/fixtures/project_worker_repo/README.md
       - tests/fixtures/project_worker_repo/tests/
         - tests/fixtures/project_worker_repo/tests/calculator_spec.py
+  - tests/ptt.test.js
   - tests/test_agent_loop.py
   - tests/test_agent_state.py
   - tests/test_app_lifecycle.py
@@ -167,9 +174,11 @@
   - tests/test_v222_project_worker.py
   - tests/test_v22_project_worker.py
   - tests/test_v23_command_center.py
+  - tests/test_v25.py
   - tests/test_voice_turn.py
   - tests/voice-engine.test.js
 - tools/
+  - tools/adopt_v25.py
   - tools/blender_bg_bake.py
   - tools/blender_command_center_bake.py
   - tools/blender_orb_bake.py
@@ -195,4 +204,5 @@
 - V23-JARVIS-COMMAND-CENTER-STABILITY.md
 - V24-MAIN-DECOMPOSITION-PROPOSAL.md
 - V24-RELEASE-CANDIDATE.md
+- V25-RELEASE.md
 - verify-local-ai.py
