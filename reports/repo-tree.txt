@@ -30,7 +30,6 @@
   - api-gateway/deps.py
   - api-gateway/Dockerfile
   - api-gateway/events.py
-  - api-gateway/godseye.html
   - api-gateway/google_oauth.py
   - api-gateway/intelligence_router.py
   - api-gateway/local_tools.py
@@ -128,7 +127,6 @@
 - start-ai.bat
 - START-DESKTOP-COMPANION.bat
 - START-HOST-BRIDGE-ADMIN.bat
-- START-JARVIS-GODSEYE.bat
 - START-JARVIS.bat
 - START-LOCAL-TEST.bat
 - STOP-LOCAL-TEST.bat

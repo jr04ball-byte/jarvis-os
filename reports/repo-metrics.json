@@ -145,7 +145,7 @@
   "local_import_cycles": [],
   "main_py_lines": 170,
   "python_test_files": 27,
-  "registered_routes": 104,
+  "registered_routes": 102,
   "route_groups": {
     "agent": 3,
     "artifacts": 5,
@@ -178,8 +178,6 @@
     "documents": 2,
     "gemini": 3,
     "gmail": 1,
-    "godseye": 1,
-    "godseye.html": 1,
     "health": 1,
     "model-lab": 6,
     "models": 1,
