@@ -57,3 +57,22 @@ def test_concurrent_get_returns_singleton():
     for t in threads:
         t.join()
     assert len(seen) == 8 and all(s is seen[0] for s in seen)
+
+
+def test_lazy_compatibility_proxy_defers_construction():
+    from deps import LazyService
+
+    c = AppContainer()
+    proxy = LazyService(c, "monitor")
+    assert "monitor" not in c._instances
+    assert proxy.get_stats() == {}
+    assert "monitor" in c._instances
+
+
+def test_close_evicts_instances_and_allows_clean_rebuild():
+    c = AppContainer()
+    first = c.get("monitor")
+    c.close()
+    assert c._instances == {}
+    second = c.get("monitor")
+    assert second is not first

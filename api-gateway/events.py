@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 import logging
+import threading
 import time
 from collections import defaultdict
 from collections.abc import Callable
@@ -115,23 +116,38 @@ class EventBus:
     def __init__(self) -> None:
         self._subs: dict[type, list[Handler]] = defaultdict(list)
         self._errors: list[dict[str, Any]] = []
+        self._lock = threading.RLock()
 
     def subscribe(self, event_cls: type, handler: Handler) -> Handler:
-        self._subs[event_cls].append(handler)
+        with self._lock:
+            if handler not in self._subs[event_cls]:
+                self._subs[event_cls].append(handler)
         return handler
 
     def unsubscribe(self, event_cls: type, handler: Handler) -> None:
-        try:
-            self._subs[event_cls].remove(handler)
-        except ValueError:
-            pass
+        with self._lock:
+            try:
+                self._subs[event_cls].remove(handler)
+            except ValueError:
+                pass
 
     def subscribers(self, event_cls: type) -> list[Handler]:
-        return list(self._subs.get(event_cls, []))
+        """Return exact subscribers plus catch-all ``Event`` subscribers.
+
+        Catch-all listeners power telemetry/SSE without forcing producers to
+        know about presentation concerns. Duplicate handlers are de-duplicated
+        while preserving registration order.
+        """
+        with self._lock:
+            handlers = list(self._subs.get(event_cls, []))
+            if event_cls is not Event:
+                handlers.extend(self._subs.get(Event, []))
+            return list(dict.fromkeys(handlers))
 
     @property
     def errors(self) -> list[dict[str, Any]]:
-        return list(self._errors)
+        with self._lock:
+            return list(self._errors)
 
     def _run_handler(self, handler: Handler, event: Event) -> Any:
         try:
@@ -148,7 +164,8 @@ class EventBus:
                 return asyncio.run(result)
             return result
         except Exception as exc:  # noqa: BLE001 - a bad listener must not break emitters
-            self._errors.append({"handler": getattr(handler, "__name__", repr(handler)), "error": str(exc)})
+            with self._lock:
+                self._errors.append({"handler": getattr(handler, "__name__", repr(handler)), "error": str(exc)})
             logger.debug("event handler failed for %s: %s", event.name, exc)
             return None
 
@@ -172,7 +189,8 @@ class EventBus:
                 if inspect.isawaitable(result):
                     await result
             except Exception as exc:  # noqa: BLE001 - a bad listener must not break emitters
-                self._errors.append({"handler": getattr(handler, "__name__", repr(handler)), "error": str(exc)})
+                with self._lock:
+                    self._errors.append({"handler": getattr(handler, "__name__", repr(handler)), "error": str(exc)})
                 logger.debug("event handler failed for %s: %s", event.name, exc)
 
 
@@ -182,7 +200,11 @@ monkeypatch this module attribute; production code must only emit/subscribe."""
 
 
 def reset_bus() -> EventBus:
-    """Replace the global bus (test isolation). Returns the fresh bus."""
-    global bus
-    bus = EventBus()
+    """Return the process bus without replacing its identity.
+
+    Older test helpers replaced the module global, which left modules that had
+    imported ``bus`` holding a stale object and silently split lifecycle events
+    across two buses. Tests needing isolation should instantiate ``EventBus()``
+    directly; the production process bus has stable identity by design.
+    """
     return bus

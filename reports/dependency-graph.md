@@ -1,40 +1,81 @@
-# Jarvis OS — Dependency Graph (generated Cycle 7, AST-measured)
+# Jarvis OS — Dependency Graph (V24 AST audit)
 
-## Local module edges (`A -> [imports]`)
-- `api-gateway/main.py` -> `brains`, `compute_manager`, `google_oauth`,
-  `local_tools`, `model_lab`, `orchestrator`, `project_worker`, `security`,
-  `tools`, `workspace_registry` (also `providers` for `ProviderMessage`)
-- `api-gateway/brains.py` -> `providers` (4 provider classes), `intelligence_router`
-- `api-gateway/intelligence_router.py` -> `providers` (`ProviderAdapter` typing only)
-- `api-gateway/orchestrator.py` -> `workspace_registry` (`context_for`)
-- `api-gateway/providers/opencode.py` -> `base`, `workspace_registry`
-  (`is_registered_workspace` — workspace boundary check)
-- `api-gateway/providers/{gemini,ollama,openai_provider}.py` -> `base`
-- `api-gateway/providers/__init__.py` re-exports all four + base types
-- Nothing in `api-gateway/` imports `main` (leaf). Only tests import `main`:
-  `test_routing_v181`, `test_voice_turn`, `test_sqlite_lifecycle`.
+## Local module edges
+The release-candidate AST scan found the following direct local dependencies:
 
-## Reading
-- Fan-in hub: `main.py` (10 local modules). Fan-out leaves: `providers/*`,
-  `security`, `workspace_registry`, `compute_manager`, `model_lab`.
-- `brains.py` is the only non-`main` orchestrator of providers (router + failover).
-- `intelligence_router.py` depends on the adapter *type*, not implementations —
-  router is provider-agnostic (verified by multibrain tests using fakes).
-- `opencode.py` → `workspace_registry` is load-bearing security wiring
-  (unregistered workspace ⇒ `RuntimeError`, pinned by contract tests).
+```text
+brains -> events, intelligence_router
+deps -> orchestrator, project_worker, store
+main -> brains, deps, events, store, telemetry_collector
+orchestrator -> events, workspace_registry
+project_worker -> events
+providers.opencode -> workspace_registry
+routes.auth -> google_oauth
+routes.chat -> compute_manager, deps, schemas, services
+routes.health -> brains, deps, services
+routes.projects -> deps, project_worker, schemas, security, services, workspace_registry
+routes.providers -> compute_manager, deps, model_lab, schemas, services
+routes.telemetry -> brains, compute_manager, deps, events, security, services,
+                    telemetry_collector, tools, workspace_registry
+routes.voice -> deps, schemas, services
+routes.workers -> brains, deps, local_tools, project_worker, schemas, services,
+                  tools, workspace_registry
+services -> brains, compute_manager, deps, google_oauth, local_tools,
+            project_worker, schemas, security, tools, workspace_registry
+telemetry_collector -> events
+```
+
+**Detected local import cycles:** none.
+
+## Direction
+The dominant dependency direction is:
+
+```text
+main (composition)
+   ↓
+routes (HTTP adapters)
+   ↓
+services / brains / workers
+   ↓
+routing + provider contracts + tools + persistence
+   ↓
+infrastructure/external services
+```
+
+The event bus inverts cross-cutting observability dependencies: producers emit
+lifecycle events; telemetry/dashboard listeners consume them without workers
+importing presentation modules.
+
+## Important boundaries
+
+- `intelligence_router.py` depends on provider contract concepts, not concrete
+  provider implementations.
+- `brains.py` owns failover execution; providers do not route themselves.
+- `providers/opencode.py` depends on `workspace_registry` because the workspace
+  boundary is a security requirement, not presentation coupling.
+- `main.py` imports the composition objects and routers but domain modules do
+  not import `main`.
+- `telemetry_collector.py` depends only on `events`.
 
 ## External dependencies
-`api-gateway/requirements.txt`: fastapi==0.115.0, uvicorn[standard]==0.30.6,
-httpx==0.27.2, pydantic==2.9.2, python-multipart==0.0.12, slowapi==0.1.9,
-numpy<2, scikit-learn==1.5.2, cryptography==43.0.1, python-dotenv==1.0.1.
-`requirements-launcher.txt`: PyQt6==6.7.0 (desktop launcher only).
-Most-imported third-party: `httpx` (8 modules — all network I/O),
-`fastapi` (5), `slowapi` (rate limiting), `pydantic` (schemas),
-`scikit-learn` (TF-IDF RAG), `cryptography` (Fernet token store).
-Dependency footprint is deliberately light (no OpenAI SDK — raw HTTP).
+`api-gateway/requirements.txt` intentionally stays small:
+
+- FastAPI / Uvicorn
+- httpx
+- Pydantic
+- python-multipart
+- slowapi
+- NumPy / scikit-learn (TF-IDF RAG)
+- cryptography (OAuth token encryption)
+- python-dotenv
+
+Provider HTTP calls use `httpx` directly; no provider SDK is required.
 
 ## Risk notes
-- `main.py` fan-in (10 modules + all routes) is the V24 split motivation.
-- No cycles detected among local modules.
-- `httpx` is the single network choke point — mockable in one place
-  (pattern already used in `test_v23_command_center.py`).
+
+1. `services.py` is the current fan-in hotspot and next extraction candidate.
+2. Live-provider branches depend on network credentials and are mocked in
+   offline CI rather than treated as deterministic tests.
+3. The dashboard event stream is intentionally in-process; multi-process API
+   deployment would require a shared pub/sub transport (Redis/NATS/etc.) if
+   clients must receive events across workers.
