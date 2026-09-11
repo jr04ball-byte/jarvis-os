@@ -22,7 +22,8 @@ from events import bus as event_bus
 
 logger = logging.getLogger(__name__)
 
-SENSITIVE_NAMES = {'.env', '.env.local', '.env.production', '.env.development', 'id_rsa', 'id_ed25519'}
+SENSITIVE_NAMES = {'.env', '.env.local', '.env.production', '.env.development', 'id_rsa', 'id_ed25519',
+                   'google_tokens.enc', '.token_key'}
 SENSITIVE_SUFFIXES = {'.pem', '.p12', '.pfx', '.key'}
 SKIP_DIRS = {'.git', 'node_modules', '.venv', 'venv', '__pycache__', '.next', 'dist', 'build', 'coverage', '.pytest_cache'}
 READ_CANDIDATES = [
