@@ -80,6 +80,40 @@ class TaskCompleted(Event):
 
 
 @dataclass(frozen=True)
+class TaskStarted(Event):
+    name: str = "task.started"
+    project_id: str = ""
+    task_id: str = ""
+    kind: str = ""
+
+
+@dataclass(frozen=True)
+class TaskProgress(Event):
+    name: str = "task.progress"
+    project_id: str = ""
+    task_id: str = ""
+    phase: str = ""
+    progress: int = 0
+
+
+@dataclass(frozen=True)
+class TaskFailed(Event):
+    name: str = "task.failed"
+    project_id: str = ""
+    task_id: str = ""
+    kind: str = ""
+    error: str = ""
+
+
+@dataclass(frozen=True)
+class TaskCancelled(Event):
+    name: str = "task.cancelled"
+    project_id: str = ""
+    task_id: str = ""
+    kind: str = ""
+
+
+@dataclass(frozen=True)
 class VerificationPassed(Event):
     name: str = "verification.passed"
     workspace: str = ""

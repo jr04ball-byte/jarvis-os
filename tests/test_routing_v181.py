@@ -51,7 +51,9 @@ def test_f_system_prompt_cannot_force_deep():
     assert select_model('auto', msgs, 'general') == FAST
 
 
-def test_explicit_and_sales_rules_preserved():
+def test_explicit_and_sales_rules_preserved(monkeypatch):
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("GEMINI_MODEL", raising=False)
     assert select_model('llama3.1:8b', [{'role': 'user', 'content': 'hi'}], 'general') == 'llama3.1:8b'
     assert select_model('auto', [{'role': 'user', 'content': 'hi'}], 'sales') == FAST
     assert select_agent_model('auto', [{'role': 'user', 'content': 'hi'}], 'general') == TOOL_MODEL

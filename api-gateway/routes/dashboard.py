@@ -17,9 +17,18 @@ router = APIRouter()
 
 @router.get("/dashboard", include_in_schema=False)
 @router.get("/dashboard.html", include_in_schema=False)
+@router.get("/dashboard-inline-v25", include_in_schema=False)
 async def dashboard_ui():
     """Primary V25 neon dashboard matching the user-supplied visual reference."""
-    return FileResponse(os.path.join(str(GATEWAY_DIR), "dashboard.html"), media_type="text/html")
+    return FileResponse(
+        os.path.join(str(GATEWAY_DIR), "dashboard.html"),
+        media_type="text/html",
+        headers={
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        },
+    )
 
 
 @router.get('/dashboard-activity.js', include_in_schema=False)

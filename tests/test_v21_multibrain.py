@@ -38,11 +38,12 @@ def test_normal_tasks_stay_on_gemini_main_brain(monkeypatch):
     assert decision.chain[0] == "gemini"
 
 
-def test_deep_reasoning_escalates_to_openai(monkeypatch):
+def test_deep_reasoning_keeps_gemini_primary(monkeypatch):
     monkeypatch.setenv("JARVIS_DEEP_BRAIN", "openai")
     router = make_router()
     decision = router.decide("Do a deep architecture review of this distributed system")
-    assert decision.selected == "openai"
+    assert decision.selected == "gemini"
+    assert "openai" in decision.chain
     assert decision.assessment.complexity >= 8
 
 
@@ -63,11 +64,12 @@ def test_private_mode_is_local_only(monkeypatch):
     assert decision.assessment.privacy == 10
 
 
-def test_fast_mode_prefers_ollama(monkeypatch):
+def test_fast_mode_keeps_gemini_primary(monkeypatch):
     monkeypatch.setenv("JARVIS_LOCAL_BRAIN", "ollama")
     router = make_router()
     decision = router.decide("Quickly summarize this", requested="fast")
-    assert decision.selected == "ollama"
+    assert decision.selected == "gemini"
+    assert "ollama" in decision.chain
     assert decision.assessment.speed_priority == 10
 
 

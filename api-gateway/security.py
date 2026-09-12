@@ -8,7 +8,7 @@ that require an explicit confirmation ticket.
 from __future__ import annotations
 
 READ_ONLY = {
-    "google_accounts", "file_search", "file_content_search", "read_file",
+    "recall_facts", "google_accounts", "file_search", "file_content_search", "read_file",
     "gmail_search", "gmail_read", "calendar_list", "home_states", "home_entities",
     "local_tools_inventory", "connections_inventory", "research_search",
     "computer_status", "computer_capabilities", "computer_verify", "computer_observe",
@@ -23,13 +23,13 @@ LOW_IMPACT = {
 
 # Writes only to Jarvis-owned internal state/artifacts; never external services.
 INTERNAL_WRITE = {
-    "artifact_create",
+    "remember_fact", "forget_fact", "artifact_create",
 }
 
 SENSITIVE = {
     "write_file", "gmail_send", "calendar_create", "calendar_update", "calendar_delete",
-    "home_device", "computer_open", "computer_click", "computer_type", "computer_key",
-    "computer_shell",
+    "home_device", "computer_open", "computer_browser", "computer_click", "computer_type", "computer_key",
+    "computer_shell", "blender_create",
 }
 
 KNOWN_TOOLS = READ_ONLY | LOW_IMPACT | INTERNAL_WRITE | SENSITIVE

@@ -21,6 +21,8 @@ from deps import (
 )
 from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
+from events import Event, bus as event_bus
+from local_voice import transcribe_local
 from schemas import ChatRequest, DeepgramSpeakRequest, VoiceTurnRequest
 from services import (
     _run_agent_loop,
@@ -139,11 +141,7 @@ async def deepgram_status():
 @router.post("/v1/voice/transcribe")
 @limiter.limit("30/minute")
 async def transcribe_voice(request: Request, audio: UploadFile = File(...)):
-    """Transcribe one bounded push-to-talk recording with the configured Gemini model."""
-    api_key = (os.getenv("GEMINI_API_KEY") or "").strip()
-    if not api_key:
-        raise HTTPException(503, "Gemini is not configured for transcription")
-    token_budget.check("gemini", "cloud")
+    """Transcribe one bounded PTT recording locally or through explicit Gemini use."""
     payload = await audio.read(20 * 1024 * 1024 + 1)
     if not payload:
         raise HTTPException(400, "audio recording is empty")
@@ -164,6 +162,27 @@ async def transcribe_voice(request: Request, audio: UploadFile = File(...)):
                     return {"transcript": ""}
         except (wave.Error, ValueError):
             raise HTTPException(400, "invalid WAV recording")
+    provider = (os.getenv("VOICE_TRANSCRIBE_PROVIDER") or "gemini").strip().lower()
+    fallback = (os.getenv("VOICE_TRANSCRIBE_GEMINI_FALLBACK") or "false").lower() in {"1", "true", "yes", "on"}
+    if provider not in {"local", "gemini"}:
+        raise HTTPException(500, "VOICE_TRANSCRIBE_PROVIDER must be local or gemini")
+    if provider == "local":
+        event_bus.emit(Event(name="voice.transcribing"))
+        try:
+            transcript = await transcribe_local(payload, mime)
+            event_bus.emit(Event(name="voice.transcription.completed"))
+            return {"transcript": transcript, "provider": "local"}
+        except Exception as exc:
+            logger.warning("Local transcription failed: %s", exc)
+            event_bus.emit(Event(name="voice.transcription.failed"))
+            if not fallback:
+                raise HTTPException(503, str(exc)) from exc
+
+    api_key = (os.getenv("GEMINI_API_KEY") or "").strip()
+    if not api_key:
+        raise HTTPException(503, "Gemini is not configured for transcription")
+    token_budget.check("gemini", "cloud")
+    event_bus.emit(Event(name="voice.transcribing"))
     model = (os.getenv("GEMINI_MODEL") or "gemini-3.5-flash").strip()
     body = {"contents": [{"parts": [
         {"text": "Transcribe only clearly audible human speech in this recording. If there is silence, noise, music, or no intelligible speech, return exactly [NO_SPEECH]. Otherwise return only the spoken words with normal punctuation. Never invent, infer, or read these instructions aloud."},
@@ -182,7 +201,8 @@ async def transcribe_voice(request: Request, audio: UploadFile = File(...)):
     transcript = "".join(str(part.get("text") or "") for part in parts).strip()
     if transcript.upper().strip(" .") in {"[NO_SPEECH]", "NO_SPEECH", "NO SPEECH"}:
         transcript = ""
-    return {"transcript": transcript}
+    event_bus.emit(Event(name="voice.transcription.completed"))
+    return {"transcript": transcript, "provider": "gemini"}
 
 
 @router.get("/voice", include_in_schema=False)

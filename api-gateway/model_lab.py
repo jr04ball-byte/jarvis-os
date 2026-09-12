@@ -30,7 +30,7 @@ async def ollama_inventory() -> dict[str, Any]:
     except Exception as e:
         out["error"] = str(e)
     try:
-        p = subprocess.run(["ollama", "ps"], capture_output=True, text=True, timeout=3)
+        p = subprocess.run(["ollama", "ps"], capture_output=True, text=True, timeout=3, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         out["processes_raw"] = p.stdout.strip()
     except Exception:
         out["processes_raw"] = ""

@@ -40,7 +40,9 @@ def test_select_model_ignores_injected_system_prompt_and_sales():
     assert select_model("auto", [{"role": "user", "content": "hi"}], "sales") == FAST_MODEL
 
 
-def test_select_agent_model_prefers_tool_capable():
+def test_select_agent_model_prefers_tool_capable(monkeypatch):
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("GEMINI_MODEL", raising=False)
     assert select_agent_model("auto") == TOOL_MODEL
     assert select_agent_model(FAST_MODEL) == TOOL_MODEL
     assert select_agent_model("qwen3:3b") == "qwen3:3b"

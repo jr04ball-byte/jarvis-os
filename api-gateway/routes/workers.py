@@ -32,7 +32,9 @@ from services import (
     _consume_confirmation,
     _project_worker_target,
     _run_agent_loop,
+    _agent_tool,
     _run_project_autofix_cycle,
+    _save_confirmation_state,
     apply_system_prompt,
     build_tools_list,
     execute_tool_core,
@@ -280,12 +282,23 @@ async def agent_confirm(request: Request, body: ConfirmationRequest):
         return result
 
     messages = list(resume["messages"])
-    messages.append({"role": "tool", "content": json.dumps(result, default=str)})
+    messages.append({"role": "tool", "name": item["tool"], "tool_call_id": resume.get("tool_call_id"), "content": json.dumps(result, default=str)})
+    remaining = resume.get("remaining_calls", [])
+    for index, call in enumerate(remaining):
+        fn = call.get("function", {})
+        outcome = await _agent_tool(fn.get("name", ""), fn.get("arguments", {}))
+        inner = outcome.result
+        if isinstance(inner, dict) and inner.get("status") == "confirmation_required":
+            state = dict(resume, messages=messages, remaining_calls=remaining[index + 1:], tool_call_id=call.get("id"))
+            _save_confirmation_state(inner["confirmation_id"], state)
+            return {"message": {"role": "assistant", "content": inner.get("reason", "Confirmation required")}, "confirmation": inner}
+        messages.append({"role": "tool", "name": fn.get("name", ""), "tool_call_id": call.get("id"), "content": json.dumps(outcome.to_dict(), default=str)})
     # Resume from the exact point at which approval interrupted the task.
     resumed_result = await _run_agent_loop(
         resume["model"], messages, resume["assistant_profile"],
         resume.get("conversation_id"), resume["max_tool_rounds"],
         initial_tool_result=None,
+        completed_rounds=resume.get("tool_rounds", 0) + 1,
     )
     project_id = resume.get("project_id")
     task_id = resume.get("task_id")

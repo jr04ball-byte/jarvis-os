@@ -1,61 +1,72 @@
 {
-  "api_gateway_python_files": 38,
+  "api_gateway_python_files": 49,
   "app_version": "25.0.0-rc1",
   "largest_python_modules": [
     {
-      "lines": 952,
+      "lines": 1138,
       "path": "api-gateway/services.py"
     },
     {
-      "lines": 632,
+      "lines": 651,
       "path": "api-gateway/project_worker.py"
+    },
+    {
+      "lines": 394,
+      "path": "api-gateway/blender_worker.py"
+    },
+    {
+      "lines": 350,
+      "path": "api-gateway/routes/projects.py"
     },
     {
       "lines": 348,
       "path": "api-gateway/routes/chat.py"
     },
     {
-      "lines": 337,
-      "path": "api-gateway/routes/projects.py"
-    },
-    {
-      "lines": 300,
-      "path": "api-gateway/routes/telemetry.py"
-    },
-    {
-      "lines": 298,
+      "lines": 311,
       "path": "api-gateway/routes/workers.py"
+    },
+    {
+      "lines": 308,
+      "path": "api-gateway/orchestrator.py"
+    },
+    {
+      "lines": 293,
+      "path": "api-gateway/routes/voice.py"
     },
     {
       "lines": 287,
       "path": "api-gateway/deps.py"
     },
     {
-      "lines": 283,
+      "lines": 285,
       "path": "api-gateway/intelligence_router.py"
-    },
-    {
-      "lines": 276,
-      "path": "api-gateway/google_oauth.py"
-    },
-    {
-      "lines": 273,
-      "path": "api-gateway/routes/voice.py"
     }
   ],
   "local_dependency_edges": {
     "activity": [
       "events"
     ],
+    "blender_worker": [
+      "creative_script",
+      "deps",
+      "local_tools"
+    ],
     "brains": [
       "budgets",
       "events",
       "intelligence_router"
     ],
+    "creative_script": [
+      "brains"
+    ],
     "deps": [
       "orchestrator",
       "project_worker",
       "store"
+    ],
+    "fact_memory": [
+      "events"
     ],
     "main": [
       "activity",
@@ -129,8 +140,17 @@
     "routes.voice": [
       "budgets",
       "deps",
+      "events",
+      "local_voice",
       "schemas",
       "services"
+    ],
+    "routes.voice_duplex": [
+      "brains",
+      "deps",
+      "events",
+      "local_tts",
+      "local_voice"
     ],
     "routes.workers": [
       "brains",
@@ -144,17 +164,22 @@
     ],
     "services": [
       "activity",
+      "blender_worker",
       "brains",
       "compute_manager",
       "deps",
       "events",
+      "fact_memory",
       "google_oauth",
       "local_tools",
       "maintenance",
       "project_worker",
+      "providers.gemini_tools",
       "schemas",
       "security",
+      "tool_result",
       "tools",
+      "tools_registry",
       "workspace_registry"
     ],
     "store": [
@@ -162,13 +187,17 @@
     ],
     "telemetry_collector": [
       "events"
+    ],
+    "tools_registry": [
+      "schema_validation",
+      "security"
     ]
   },
   "local_import_cycle_count": 0,
   "local_import_cycles": [],
-  "main_py_lines": 185,
-  "python_test_files": 31,
-  "registered_routes": 101,
+  "main_py_lines": 195,
+  "python_test_files": 34,
+  "registered_routes": 104,
   "route_groups": {
     "activity": 1,
     "agent": 3,
@@ -185,8 +214,10 @@
     "computer": 5,
     "connections": 3,
     "conversations": 4,
+    "creative-files": 1,
     "dashboard": 1,
     "dashboard-activity.js": 1,
+    "dashboard-inline-v25": 1,
     "dashboard.html": 1,
     "deepgram-speak": 1,
     "deepgram-speak-stream": 1,
@@ -214,10 +245,11 @@
     "telemetry": 2,
     "tools": 3,
     "voice": 3,
+    "voice-duplex": 1,
+    "voice-duplex-worklet.js": 1,
     "voice-engine.js": 1,
     "voice-live": 1,
-    "voice-live.html": 1,
-    "weather": 1
+    "voice-live.html": 1
   },
-  "services_py_lines": 952
+  "services_py_lines": 1138
 }

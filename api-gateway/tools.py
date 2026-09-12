@@ -192,6 +192,9 @@ async def computer_open(target: str) -> dict[str, Any]:
     if not target.strip(): raise ValueError("target is required")
     return await _computer_call("/computer/open", {"target":target})
 
+async def computer_browser(url: str = "", query: str = "", browser: str = "chrome", visible: bool = True) -> dict[str, Any]:
+    return await _computer_call("/computer/browser", {"url": url or "", "query": query or "", "browser": browser, "visible": bool(visible)})
+
 async def computer_type(text: str, title: str = "", process: str = "", pid: int = 0) -> dict[str, Any]:
     if not text: raise ValueError("text is required")
     return await _computer_call("/computer/type", {"text":text,"title":title or "","process":process or "","pid":int(pid or 0)})

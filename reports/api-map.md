@@ -1,7 +1,7 @@
 # Jarvis OS — API Map (generated)
 
 **FastAPI application version:** `25.0.0-rc1`  
-**Registered API/UI routes:** **101**
+**Registered API/UI routes:** **104**
 
 | Methods | Path | Name |
 |---|---|---|
@@ -16,6 +16,7 @@
 | GET | `/companion-sw.js` | `companion_sw` |
 | GET | `/dashboard` | `dashboard_ui` |
 | GET | `/dashboard-activity.js` | `dashboard_activity_js` |
+| GET | `/dashboard-inline-v25` | `dashboard_ui` |
 | GET | `/dashboard.html` | `dashboard_ui` |
 | GET | `/gmail/messages` | `gmail_messages` |
 | GET | `/health` | `health_check` |
@@ -56,6 +57,7 @@
 | POST | `/v1/conversations` | `create_conversation` |
 | GET | `/v1/conversations/{conv_id}` | `get_conversation` |
 | POST | `/v1/conversations/{conv_id}/messages` | `add_conversation_message` |
+| GET | `/v1/creative-files/{task_id}/{filename}` | `creative_file` |
 | POST | `/v1/deepgram-speak` | `deepgram_speak` |
 | POST | `/v1/deepgram-speak-stream` | `deepgram_speak_stream` |
 | GET | `/v1/deepgram-status` | `deepgram_status` |
@@ -101,8 +103,9 @@
 | GET | `/v1/tools/local` | `local_tools_inventory` |
 | POST | `/v1/voice/transcribe` | `transcribe_voice` |
 | POST | `/v1/voice/turn` | `voice_turn` |
-| GET | `/v1/weather` | `weather` |
 | GET | `/voice` | `voice_ui` |
+| GET | `/voice-duplex` | `duplex_ui` |
+| GET | `/voice-duplex-worklet.js` | `duplex_worklet` |
 | GET | `/voice-engine.js` | `voice_engine_js` |
 | GET | `/voice-live` | `voice_live_ui` |
 | GET | `/voice-live.html` | `voice_live_ui` |

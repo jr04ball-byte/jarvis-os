@@ -192,6 +192,25 @@ def _safe_file(path: Path) -> bool:
     return name not in SENSITIVE_NAMES and path.suffix.lower() not in SENSITIVE_SUFFIXES
 
 
+def _worker_env() -> dict[str, str]:
+    """Minimal allow-listed environment for project-worker subprocesses.
+
+    Worker-driven commands (build/verify scripts) must never receive Jarvis
+    secrets: API keys, OAuth tokens, host-bridge credentials, encryption
+    keys, or JWT secrets. Only non-secret runtime variables are passed
+    through alongside the core Windows/process environment.
+    """
+    pass_through = {
+        'PATH', 'SystemRoot', 'SYSTEMROOT', 'WINDIR', 'TEMP', 'TMP',
+        'USERPROFILE', 'HOME', 'HOMEDRIVE', 'HOMEPATH', 'USERNAME',
+        'COMPUTERNAME', 'ALLUSERSPROFILE', 'PROGRAMFILES', 'PROGRAMFILES(X86)',
+        'APPDATA', 'LOCALAPPDATA', 'ProgramData', 'PUBLIC', 'COMSPEC',
+        'PATHEXT', 'PROCESSOR_ARCHITECTURE', 'NUMBER_OF_PROCESSORS',
+        'OS', 'OLLAMA_URL', 'OLLAMA_MODEL', 'OPENCODE_SERVER_URL',
+    }
+    return {k: v for k, v in os.environ.items() if k in pass_through}
+
+
 def run_command(command: list[str], workspace: str, timeout: int = 120) -> CommandEvidence:
     root = _safe_resolve(workspace)
     started = time.time()
@@ -207,8 +226,8 @@ def run_command(command: list[str], workspace: str, timeout: int = 120) -> Comma
             capture_output=True,
             timeout=max(1, min(timeout, 900)),
             shell=False,
-            env=os.environ.copy(),
-        )
+            env=_worker_env(),
+         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         return CommandEvidence(command, str(root), proc.returncode == 0, proc.returncode,
                                _tail(proc.stdout), _tail(proc.stderr), int((time.time()-started)*1000))
     except FileNotFoundError as exc:

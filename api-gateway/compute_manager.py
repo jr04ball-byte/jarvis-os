@@ -29,7 +29,7 @@ def gpu_stats() -> dict[str, Any]:
             ["nvidia-smi", "--query-gpu=name,memory.used,memory.total,utilization.gpu,temperature.gpu",
              "--format=csv,noheader,nounits"],
             capture_output=True, text=True, timeout=3, check=True,
-        )
+         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         line = next((x.strip() for x in p.stdout.splitlines() if x.strip()), "")
         parts = [x.strip() for x in line.split(",")]
         if len(parts) >= 5:
@@ -44,7 +44,7 @@ def gpu_stats() -> dict[str, Any]:
 
 def ollama_processes() -> list[dict[str, Any]]:
     try:
-        p = subprocess.run(["ollama", "ps"], capture_output=True, text=True, timeout=3)
+        p = subprocess.run(["ollama", "ps"], capture_output=True, text=True, timeout=3, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         rows = [x.strip() for x in p.stdout.splitlines() if x.strip()]
         if len(rows) < 2:
             return []

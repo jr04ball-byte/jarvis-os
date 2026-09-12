@@ -80,7 +80,8 @@ class GeminiProvider(ProviderAdapter):
         candidates = data.get("candidates") or [{}]
         parts = ((candidates[0].get("content") or {}).get("parts")) or []
         usage = data.get("usageMetadata") or {}
-        return ProviderResult(_text_parts(parts), self.name, self.model, usage=usage)
+        return ProviderResult(_text_parts(parts), self.name, self.model, usage=usage,
+                              metadata={'finish_reason': candidates[0].get('finishReason')})
 
     async def stream(self, messages: list[ProviderMessage], *, temperature: float = 0.7, max_tokens: int = 1024, task_context: dict[str, Any] | None = None) -> AsyncGenerator[str, None]:
         if not self.configured:

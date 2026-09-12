@@ -42,6 +42,19 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+@router.get("/v1/creative-files/{task_id}/{filename}")
+async def creative_file(task_id: str, filename: str):
+    import re
+    from fastapi.responses import FileResponse
+    from deps import ARTIFACTS_DIR
+    if not re.fullmatch(r"[0-9a-f]{8}", task_id) or filename not in {"render.png", "scene.blend"}:
+        raise HTTPException(404, "Unknown creative artifact")
+    path = (ARTIFACTS_DIR / f"task_{task_id}" / filename).resolve()
+    if not path.is_relative_to(ARTIFACTS_DIR.resolve()) or not path.is_file():
+        raise HTTPException(404, "Creative artifact not found")
+    return FileResponse(path, media_type="image/png" if filename.endswith('.png') else "application/octet-stream")
+
+
 @router.get("/v1/artifacts")
 async def artifacts_list(limit: int = 30):
     items=[]

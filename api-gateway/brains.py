@@ -18,6 +18,7 @@ from providers import (
     OllamaProvider,
     OpenAIProvider,
     OpenCodeProvider,
+    OpenRouterProvider,
     ProviderMessage,
 )
 from pydantic import BaseModel
@@ -28,7 +29,8 @@ GEMINI = "gemini"
 OPENAI = "openai"
 OPENCODE = "opencode"
 OLLAMA = "ollama"
-KNOWN = (GEMINI, OPENAI, OPENCODE, OLLAMA)
+OPENROUTER = "openrouter"
+KNOWN = (GEMINI, OPENROUTER, OPENAI, OPENCODE, OLLAMA)
 
 
 class Message(BaseModel):
@@ -57,6 +59,7 @@ class RouteRequest(BaseModel):
 
 providers = {
     GEMINI: GeminiProvider(),
+    OPENROUTER: OpenRouterProvider(),
     OPENAI: OpenAIProvider(),
     OLLAMA: OllamaProvider(),
     OPENCODE: OpenCodeProvider(),

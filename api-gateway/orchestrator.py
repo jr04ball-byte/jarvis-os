@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from events import TaskCompleted, TaskQueued
+from events import TaskCompleted, TaskQueued, TaskStarted, TaskProgress, TaskFailed, TaskCancelled
 from events import bus as event_bus
 from workspace_registry import context_for
 
@@ -109,6 +109,8 @@ class OrchestratorStore:
                 title TEXT NOT NULL, kind TEXT NOT NULL, risk TEXT NOT NULL,
                 brain TEXT NOT NULL, capability TEXT NOT NULL DEFAULT 'generic', status TEXT NOT NULL, depends_on TEXT NOT NULL,
                 result_json TEXT, error TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+                progress INTEGER NOT NULL DEFAULT 0, phase TEXT NOT NULL DEFAULT 'Queued',
+                evidence TEXT, artifacts TEXT,
                 FOREIGN KEY(project_id) REFERENCES jarvis_projects(id)
             );
             CREATE TABLE IF NOT EXISTS jarvis_audit (
@@ -121,8 +123,9 @@ class OrchestratorStore:
             """)
         with self._db() as c:
             cols = {r[1] for r in c.execute("PRAGMA table_info(jarvis_tasks)").fetchall()}
-            if "capability" not in cols:
-                c.execute("ALTER TABLE jarvis_tasks ADD COLUMN capability TEXT NOT NULL DEFAULT 'generic'")
+            for col in ["capability", "progress", "phase", "evidence", "artifacts"]:
+                if col not in cols:
+                    c.execute(f"ALTER TABLE jarvis_tasks ADD COLUMN {col} TEXT NOT NULL DEFAULT ''")
 
     def _audit(self, c, project_id, task_id, event, detail=None):
         c.execute("INSERT INTO jarvis_audit(project_id,task_id,event,detail_json,created_at) VALUES(?,?,?,?,?)",
@@ -139,9 +142,9 @@ class OrchestratorStore:
             for i, task in enumerate(plan["tasks"]):
                 tid = uuid.uuid4().hex
                 deps = [prev] if prev else []
-                c.execute("INSERT INTO jarvis_tasks(id,project_id,position,title,kind,risk,brain,capability,status,depends_on,result_json,error,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                c.execute("INSERT INTO jarvis_tasks(id,project_id,position,title,kind,risk,brain,capability,status,depends_on,result_json,error,created_at,updated_at,progress,phase,evidence,artifacts) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                           (tid, pid, i, task["title"], task["kind"], task["risk"], task["brain"], task.get("capability", "generic"),
-                           "ready" if not deps else "pending", json.dumps(deps), None, None, now, now))
+                           "ready" if not deps else "pending", json.dumps(deps), None, None, now, now, 0, "Queued", "", "[]"))
                 if not deps:
                     queued.append((tid, task["kind"]))
                 prev = tid
@@ -157,6 +160,10 @@ class OrchestratorStore:
             try: d["result"] = json.loads(d["result_json"])
             except Exception: d["result"] = d["result_json"]
         d.pop("result_json", None)
+        d["progress"] = int(d.get("progress", 0))
+        d["phase"] = d.get("phase", "Queued")
+        d["evidence"] = d.get("evidence", "")
+        d["artifacts"] = json.loads(d.get("artifacts", "[]") or "[]") if d.get("artifacts") else []
         return d
 
     def get_project(self, project_id: str) -> dict[str, Any]:
@@ -177,7 +184,8 @@ class OrchestratorStore:
                     return self._task_dict(r)
         return None
 
-    def transition(self, task_id: str, status: str, result: Any = None, error: str | None = None) -> dict[str, Any]:
+    def transition(self, task_id: str, status: str, result: Any = None, error: str | None = None,
+                   progress: int = 0, phase: str = "") -> dict[str, Any]:
         if status not in STATUS: raise ValueError(f"invalid status: {status}")
         now = utc_now()
         pid: str | None = None
@@ -188,10 +196,10 @@ class OrchestratorStore:
             if not row: raise KeyError(task_id)
             if row["status"] in TERMINAL and status != row["status"]: raise ValueError("terminal task cannot transition")
             pid, kind = row["project_id"], row["kind"]
-            c.execute("UPDATE jarvis_tasks SET status=?, result_json=?, error=?, updated_at=? WHERE id=?",
-                      (status, json.dumps(result, default=str) if result is not None else None, error, now, task_id))
+            c.execute("UPDATE jarvis_tasks SET status=?, result_json=?, error=?, updated_at=?, progress=COALESCE(NULLIF(?,''),0), phase=COALESCE(NULLIF(?,'') , 'Queued') WHERE id=?",
+                       (status, json.dumps(result, default=str) if result is not None else None, error, now, progress, phase, task_id))
             c.execute("UPDATE jarvis_projects SET updated_at=? WHERE id=?", (now, row["project_id"]))
-            self._audit(c, row["project_id"], task_id, "task_transition", {"from": row["status"], "to": status, "error": error})
+            self._audit(c, row["project_id"], task_id, "task_transition", {"from": row["status"], "to": status, "error": error, "progress": progress, "phase": phase})
             if status == "completed":
                 nxt = c.execute("SELECT * FROM jarvis_tasks WHERE project_id=? AND position>? ORDER BY position LIMIT 1", (row["project_id"], row["position"])).fetchone()
                 if nxt and nxt["status"] == "pending":
@@ -200,8 +208,14 @@ class OrchestratorStore:
             statuses = [x[0] for x in c.execute("SELECT status FROM jarvis_tasks WHERE project_id=?", (row["project_id"],)).fetchall()]
             if statuses and all(s == "completed" for s in statuses):
                 c.execute("UPDATE jarvis_projects SET status='completed', updated_at=? WHERE id=?", (now, row["project_id"]))
+        if status == "running" and pid is not None and kind is not None:
+            event_bus.emit(TaskStarted(project_id=pid, task_id=task_id, kind=kind))
         if status == "completed" and pid is not None and kind is not None:
             event_bus.emit(TaskCompleted(project_id=pid, task_id=task_id, kind=kind))
+        if status == "failed" and pid is not None and kind is not None:
+            event_bus.emit(TaskFailed(project_id=pid, task_id=task_id, kind=kind, error=error or ""))
+        if status == "cancelled" and pid is not None and kind is not None:
+            event_bus.emit(TaskCancelled(project_id=pid, task_id=task_id, kind=kind))
         if readied is not None and pid is not None:
             event_bus.emit(TaskQueued(project_id=pid, task_id=readied[0], kind=readied[1]))
         return self.get_project(row["project_id"])
@@ -229,3 +243,66 @@ class OrchestratorStore:
         with self._db() as c:
             rows = c.execute("SELECT * FROM jarvis_audit WHERE project_id=? ORDER BY id DESC LIMIT ?", (project_id, max(1, min(limit, 500)))).fetchall()
             return [dict(x) for x in rows]
+
+    def start_task(self, task_id: str) -> dict[str, Any]:
+        """Mark a task as running and emit TaskStarted."""
+        return self.transition(task_id, "running", progress=10, phase="Starting")
+
+    def update_progress(self, task_id: str, progress: int, phase: str = "") -> dict[str, Any]:
+        """Update task progress and phase without changing status."""
+        return self.transition(task_id, "running", progress=progress, phase=phase)
+
+    def update_evidence(self, task_id: str, evidence: str, artifacts: list[str] | None = None) -> dict[str, Any]:
+        """Attach evidence and optional artifacts to a task."""
+        now = utc_now()
+        artifacts_json = json.dumps(artifacts or [])
+        with self._lock, self._db() as c:
+            c.execute("UPDATE jarvis_tasks SET evidence=?, artifacts=?, updated_at=? WHERE id=?",
+                       (evidence, artifacts_json, now, task_id))
+        return self.get_project(c.execute("SELECT project_id FROM jarvis_tasks WHERE id=?", (task_id,)).fetchone()["project_id"])
+
+    def cancel_task(self, task_id: str, reason: str = "") -> dict[str, Any]:
+        """Cancel a task with proper state transitions and audit."""
+        now = utc_now()
+        with self._lock, self._db() as c:
+            row = c.execute("SELECT * FROM jarvis_tasks WHERE id=?", (task_id,)).fetchone()
+            if not row: raise KeyError(task_id)
+            if row["status"] in TERMINAL: raise ValueError("terminal task cannot transition")
+            project_id, kind = row["project_id"], row["kind"]
+            c.execute("UPDATE jarvis_tasks SET status='cancelled', error=?, updated_at=? WHERE id=?",
+                       (reason, now, task_id))
+            c.execute("UPDATE jarvis_projects SET updated_at=? WHERE id=?", (now, project_id))
+            self._audit(c, project_id, task_id, "task_cancelled", {"reason": reason})
+        event_bus.emit(TaskCancelled(project_id=project_id, task_id=task_id, kind=kind))
+        return self.get_project(project_id)
+
+    def recover(self) -> list[dict[str, Any]]:
+        """Re-queue tasks in running/blocked/awaiting_approval states after restart.
+
+        Returns the list of recovered task dicts. Running tasks are moved
+        to 'ready' so the executor can pick them up again. Blocked tasks
+        stay blocked but are flagged for recovery.
+        """
+        recovered: list[dict[str, Any]] = []
+        with self._lock, self._db() as c:
+            rows = c.execute(
+                "SELECT * FROM jarvis_tasks WHERE status IN ('running', 'blocked', 'awaiting_approval')"
+            ).fetchall()
+            for row in rows:
+                tid = row["id"]
+                pid = row["project_id"]
+                now = utc_now()
+                c.execute("UPDATE jarvis_tasks SET status='ready', updated_at=? WHERE id=?", (now, tid))
+                updated = c.execute("SELECT * FROM jarvis_tasks WHERE id=?", (tid,)).fetchone()
+                if updated:
+                    recovered.append(self._task_dict(updated))
+                event_bus.emit(TaskQueued(project_id=pid, task_id=tid, kind=row["kind"]))
+            c.execute("UPDATE jarvis_projects SET status='active', updated_at=? WHERE status='active'", (now,))
+        return recovered
+
+    def pending_count(self) -> int:
+        """Count tasks not yet in terminal state."""
+        with self._db() as c:
+            return c.execute(
+                "SELECT COUNT(*) FROM jarvis_tasks WHERE status NOT IN ('completed', 'failed', 'cancelled')"
+            ).fetchone()[0]

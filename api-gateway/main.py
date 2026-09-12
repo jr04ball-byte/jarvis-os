@@ -52,6 +52,7 @@ from routes import (  # noqa: E402
     providers,
     telemetry,
     voice,
+    voice_duplex,
     workers,
 )
 
@@ -80,6 +81,14 @@ async def lifespan(app: FastAPI):
     app.state.activity.start()
     app.state.maintenance = MaintenanceWorker(data_dir(), event_bus)
     maintenance_task = asyncio.create_task(app.state.maintenance.run())
+    # Recover interrupted tasks on startup.
+    try:
+        from deps import orchestrator
+        recovered = orchestrator.recover()
+        if recovered:
+            logger.info("Recovered %d interrupted tasks on startup", len(recovered))
+    except Exception:
+        logger.exception("Task recovery on startup failed")
     logger.info("Jarvis OS %s starting", APP_VERSION)
     try:
         yield
@@ -168,6 +177,7 @@ def create_app() -> FastAPI:
     app.include_router(workers.router)
     app.include_router(chat.router)
     app.include_router(voice.router)
+    app.include_router(voice_duplex.router)
     app.include_router(dashboard.router)
     app.include_router(health.router)
 

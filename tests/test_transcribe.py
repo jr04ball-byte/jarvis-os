@@ -27,6 +27,7 @@ def silent_wav_bytes(seconds=1):
 
 
 def test_transcribe_requires_gemini_key(monkeypatch):
+    monkeypatch.setenv("VOICE_TRANSCRIBE_PROVIDER", "gemini")
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     client = make_app()
     r = client.post("/v1/voice/transcribe", files={"audio": ("a.webm", b"xx", "audio/webm")})
@@ -48,6 +49,7 @@ def test_transcribe_silence_short_circuits(monkeypatch):
 
 
 def test_transcribe_uses_configured_gemini_model(monkeypatch):
+    monkeypatch.setenv("VOICE_TRANSCRIBE_PROVIDER", "gemini")
     monkeypatch.setenv("GEMINI_API_KEY", "k")
     seen = {}
 
@@ -77,11 +79,12 @@ def test_transcribe_uses_configured_gemini_model(monkeypatch):
     monkeypatch.setattr(httpx, "AsyncClient", FakeClient)
     client = make_app()
     r = client.post("/v1/voice/transcribe", files={"audio": ("a.webm", b"\x01\x02", "audio/webm")})
-    assert r.status_code == 200 and r.json() == {"transcript": "hello"}
+    assert r.status_code == 200 and r.json() == {"transcript": "hello", "provider": "gemini"}
     assert "gemini-3.5-flash" in seen["url"] and seen["key"] == "k"
 
 
 def test_transcribe_no_speech_marker_normalized(monkeypatch):
+    monkeypatch.setenv("VOICE_TRANSCRIBE_PROVIDER", "gemini")
     monkeypatch.setenv("GEMINI_API_KEY", "k")
 
     class FakeResponse:
@@ -108,7 +111,36 @@ def test_transcribe_no_speech_marker_normalized(monkeypatch):
     monkeypatch.setattr(httpx, "AsyncClient", FakeClient)
     client = make_app()
     r = client.post("/v1/voice/transcribe", files={"audio": ("a.webm", b"\x01\x02", "audio/webm")})
-    assert r.status_code == 200 and r.json() == {"transcript": ""}
+    assert r.status_code == 200 and r.json() == {"transcript": "", "provider": "gemini"}
+
+
+def test_transcribe_uses_local_provider(monkeypatch):
+    monkeypatch.setenv("VOICE_TRANSCRIBE_PROVIDER", "local")
+    import routes.voice as voice
+
+    async def fake_local(payload, mime):
+        assert payload == b"\x01\x02"
+        assert mime == "audio/webm"
+        return "local words"
+
+    monkeypatch.setattr(voice, "transcribe_local", fake_local)
+    r = make_app().post("/v1/voice/transcribe", files={"audio": ("a.webm", b"\x01\x02", "audio/webm")})
+    assert r.status_code == 200
+    assert r.json() == {"transcript": "local words", "provider": "local"}
+
+
+def test_local_failure_requires_explicit_fallback(monkeypatch):
+    monkeypatch.setenv("VOICE_TRANSCRIBE_PROVIDER", "local")
+    monkeypatch.setenv("VOICE_TRANSCRIBE_GEMINI_FALLBACK", "false")
+    import routes.voice as voice
+
+    async def unavailable(payload, mime):
+        raise RuntimeError("local unavailable")
+
+    monkeypatch.setattr(voice, "transcribe_local", unavailable)
+    r = make_app().post("/v1/voice/transcribe", files={"audio": ("a.webm", b"\x01\x02", "audio/webm")})
+    assert r.status_code == 503
+    assert "local unavailable" in r.json()["detail"]
 
 
 def test_gemini_provider_uses_configured_model(monkeypatch):

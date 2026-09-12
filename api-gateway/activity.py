@@ -27,7 +27,9 @@ class ActivityCore:
         name = event.name
         state = 'active'
         outcome = getattr(event, 'status', '')
-        if 'failed' in name or outcome == 'failed':
+        if name == 'voice.transcribing':
+            state = 'transcribing'
+        elif 'failed' in name or outcome == 'failed':
             state = 'failed'
         elif outcome.startswith('blocked'):
             state = 'blocked'
@@ -44,7 +46,7 @@ class ActivityCore:
             self.counts[name] += 1
             record = dict(id=self.sequence, name=name, state=state, ts=event.ts)
             provider = getattr(event, 'provider', '')
-            if provider in {'gemini', 'openai', 'ollama', 'opencode'}:
+            if provider in {'gemini', 'openrouter', 'openai', 'ollama', 'opencode'}:
                 record['provider'] = provider
             self.history.append(record)
 

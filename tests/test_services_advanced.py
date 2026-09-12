@@ -9,6 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "api-gateway"))
 
 import services
 from fastapi import HTTPException
+from tool_result import ToolResult
 from store import ConversationDB
 
 
@@ -87,10 +88,13 @@ def test_execute_tool_core_missing_arg_and_branches(monkeypatch, tmp_path):
 
 def test_agent_tool_unknown_and_inventory(monkeypatch):
     async def run():
-        with pytest.raises(HTTPException):
-            await services._agent_tool("nope_tool", {}, False)
-        out = await services._agent_tool("local_tools_inventory", {}, False)
-        assert isinstance(out["result"]["tools"], list)
+        result = await services._agent_tool("nope_tool", {}, False)
+        assert isinstance(result, ToolResult)
+        assert result.is_failure()
+        assert "unknown" in result.error
+        result = await services._agent_tool("local_tools_inventory", {}, False)
+        assert isinstance(result, ToolResult)
+        assert isinstance(result.result["result"]["tools"], list)
 
     asyncio.run(run())
 

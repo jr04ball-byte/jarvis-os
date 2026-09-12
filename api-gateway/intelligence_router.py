@@ -159,6 +159,7 @@ class IntelligenceRouter:
         self.providers = providers
         self.primary = _env("JARVIS_PRIMARY_BRAIN", "gemini").lower()
         self.deep_provider = _env("JARVIS_DEEP_BRAIN", "openai").lower()
+        self.fallback_provider = _env("JARVIS_FALLBACK_BRAIN", "openrouter").lower()
         self.local_provider = _env("JARVIS_LOCAL_BRAIN", "ollama").lower()
         self.coding_provider = _env("JARVIS_CODING_BRAIN", "opencode").lower()
         self.telemetry = RouterTelemetry()
@@ -232,23 +233,23 @@ class IntelligenceRouter:
         assessment = self.assess(text, req, profile)
 
         if req in self.providers:
-            chain = self._unique_existing([req, self.primary, self.deep_provider, self.local_provider])
+            chain = self._unique_existing([req, self.primary, self.fallback_provider, self.local_provider])
             return RouteDecision(req, chain[0], chain, assessment, f"explicit provider request: {req}")
 
         if assessment.mode == "private":
             chain = self._unique_existing([self.local_provider])
             reason = "private mode enforces local-only execution"
         elif assessment.mode == "coding" or assessment.coding >= 8:
-            chain = self._unique_existing([self.coding_provider, self.deep_provider, self.primary, self.local_provider])
+            chain = self._unique_existing([self.coding_provider, self.primary, self.fallback_provider, self.local_provider])
             reason = "coding task routed to bounded coding worker with cloud/local fallbacks"
         elif assessment.mode == "deep" or assessment.complexity >= 8:
-            chain = self._unique_existing([self.deep_provider, self.primary, self.local_provider])
-            reason = "deep task escalated to specialist reasoning provider"
+            chain = self._unique_existing([self.primary, self.fallback_provider, self.deep_provider, self.local_provider])
+            reason = "deep task stays on Gemini with cloud and local fallbacks"
         elif assessment.mode == "fast":
-            chain = self._unique_existing([self.local_provider, self.primary, self.deep_provider])
-            reason = "fast mode prefers local low-latency execution"
+            chain = self._unique_existing([self.primary, self.fallback_provider, self.local_provider])
+            reason = "fast mode keeps Gemini primary with low-cost fallbacks"
         else:
-            chain = self._unique_existing([self.primary, self.local_provider, self.deep_provider])
+            chain = self._unique_existing([self.primary, self.fallback_provider, self.local_provider])
             reason = "normal task stays on Gemini main brain"
 
         if not chain:
@@ -272,6 +273,7 @@ class IntelligenceRouter:
             "policy": {
                 "primary": self.primary,
                 "deep": self.deep_provider,
+                "fallback": self.fallback_provider,
                 "local": self.local_provider,
                 "coding": self.coding_provider,
                 "modes": sorted(self.MODES),

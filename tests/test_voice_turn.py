@@ -37,7 +37,9 @@ def test_sales_profile_goes_agent():
     assert select_voice_path('Hello there.', 'sales') == AGENT
 
 
-def test_explicit_model_still_honored_downstream():
+def test_explicit_model_still_honored_downstream(monkeypatch):
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("GEMINI_MODEL", raising=False)
     assert select_model('gemma3:4b', [{'role': 'user', 'content': 'x'}], 'general') == 'gemma3:4b'
     assert select_agent_model('auto', [{'role': 'user', 'content': 'x'}], 'general') == TOOL_MODEL
 

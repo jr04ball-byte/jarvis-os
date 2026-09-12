@@ -1,0 +1,5 @@
+-r requirements-voice-local.txt
+kokoro-onnx>=0.4,<1
+onnxruntime>=1.19,<2
+soundfile>=0.12,<1
+websockets>=13,<16
