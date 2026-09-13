@@ -111,3 +111,35 @@ def test_native_enumeration_from_threadpool():
     for window in result:
         assert window['handle'] > 0 and window['pid'] > 0
         assert len(window['rect']) == 4
+
+def test_resolve_open_target_creative_files_url_rewrites_to_local(monkeypatch):
+    import host_bridge
+    monkeypatch.setattr(host_bridge, '_artifact_scene', lambda task_id: 'C:\\scenes\\scene.blend')
+    kind, value = host_bridge._resolve_open_target('http://localhost:8000/v1/creative-files/task_a820ddc7/scene.blend')
+    assert kind == 'local' and value == 'C:\\scenes\\scene.blend'
+
+
+def test_resolve_open_target_plain_task_reference(monkeypatch):
+    import host_bridge
+    monkeypatch.setattr(host_bridge, '_artifact_scene', lambda task_id: 'C:\\scenes\\scene.blend')
+    assert host_bridge._resolve_open_target('task_281606a7') == ('local', 'C:\\scenes\\scene.blend')
+    assert host_bridge._resolve_open_target('a820ddc7') == ('local', 'C:\\scenes\\scene.blend')
+
+
+def test_resolve_open_target_remote_url_kept_for_rejection():
+    import host_bridge
+    kind, value = host_bridge._resolve_open_target('https://example.com/foo.blend')
+    assert kind == 'remote' and value == 'https://example.com/foo.blend'
+
+
+def test_resolve_open_target_absolute_existing_file_is_local(tmp_path):
+    import host_bridge
+    target = tmp_path / 'scene.blend'
+    target.write_bytes(b'BLENDER')
+    assert host_bridge._resolve_open_target(str(target)) == ('local', str(target))
+
+
+def test_resolve_open_target_empty_is_none():
+    import host_bridge
+    assert host_bridge._resolve_open_target('') is None
+    assert host_bridge._resolve_open_target('   ') is None

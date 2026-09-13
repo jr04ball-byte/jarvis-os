@@ -1,4 +1,4 @@
-import os, secrets, subprocess, sys, time, typing
+import os, re, secrets, subprocess, sys, time, typing
 from typing import Any
 import ctypes
 import json
@@ -309,6 +309,47 @@ def _pyautogui():
     except ImportError:
         raise HTTPException(503, 'pyautogui is not installed on the Windows host bridge')
 
+def _artifact_scene(task_id: str) -> str | None:
+    artifacts = Path(__file__).resolve().parents[1] / 'api-gateway' / 'data' / 'artifacts'
+    base = artifacts / f'task_{task_id}'
+    if (base / 'scene.blend').is_file():
+        return str(base / 'scene.blend')
+    blends = sorted((b for b in base.rglob('*.blend') if b.is_file())) if base.is_dir() else []
+    return str(blends[0]) if blends else None
+
+
+def _resolve_open_target(target: str):
+    """Resolve an open target to a local, existing file when possible.
+
+    Jarvis may describe a rendered scene as a creative-files URL, a task id, or
+    a bare filename. Rewriting those references to the on-disk artifact prevents
+    desktop apps (notably Blender) from ever being handed remote or partial
+    content. Returns None when empty, or a ('local'|'remote'|'unknown', value)
+    tuple otherwise.
+    """
+    t = (target or '').strip().strip('"').strip("'")
+    if not t:
+        return None
+    low = t.lower()
+    if low.startswith(('http://', 'https://', 'www.')):
+        parsed = urlparse(t if not low.startswith('www.') else 'http://' + t)
+        m = re.search(r'/v1/creative-files/(?:task_)?([0-9a-fA-F]{8})/?', parsed.path)
+        if m:
+            local = _artifact_scene(m.group(1))
+            if local:
+                return ('local', local)
+        return ('remote', t)
+    m = re.search(r'(?:task_)?([0-9a-fA-F]{8})', t)
+    if m:
+        local = _artifact_scene(m.group(1))
+        if local:
+            return ('local', local)
+    p = Path(os.path.expandvars(os.path.expanduser(t)))
+    if p.is_absolute() and p.is_file():
+        return ('local', str(p))
+    return ('unknown', t)
+
+
 class ComputerOpenRequest(BaseModel):
     target: str
 class ComputerTypeRequest(BaseModel):
@@ -340,6 +381,19 @@ def computer_open(req: ComputerOpenRequest, authorization: str | None = Header(d
                "file explorer": "explorer.exe", "task manager": "taskmgr.exe"}
     target=aliases.get(req.target.strip().lower(), req.target.strip())
     if not target: raise HTTPException(400,'target is required')
+    resolved = _resolve_open_target(target)
+    if resolved is not None:
+        kind, value = resolved
+        if kind == 'remote':
+            raise HTTPException(400, 'refusing to open a remote URL in a desktop app: ' + value
+                                + '. Download the scene, or ask Jarvis to open the local rendered scene instead.')
+        if kind == 'local':
+            target = value
+        elif kind == 'unknown' and target.lower().endswith('.blend'):
+            artifacts = Path(__file__).resolve().parents[1] / 'api-gateway' / 'data' / 'artifacts'
+            available = sorted(str(b) for b in artifacts.glob('task_*/scene.blend')) if artifacts.is_dir() else []
+            raise HTTPException(400, 'no local Blender scene found for ' + target
+                                + ('; available scenes: ' + ', '.join(available) if available else ' (none found)'))
     # Explicitly avoid shell parsing: Windows start is invoked with a single argument.
     if sys.platform != 'win32': raise HTTPException(400,'Windows computer control requires Windows')
     import psutil
@@ -660,6 +714,8 @@ def _expected_process_names(target: str) -> set:
         return {'systemsettings.exe'}
     if t.endswith('.txt'):
         return {'notepad.exe'}
+    if t.endswith('.blend'):
+        return {'blender.exe'}
     aliases = {'notepad': {'notepad.exe'}, 'edge': {'msedge.exe'}, 'msedge': {'msedge.exe'},
                'chrome': {'chrome.exe'}, 'firefox': {'firefox.exe'}, 'mspaint': {'mspaint.exe'},
                'paint': {'mspaint.exe'}, 'calc': {'calculatorapp.exe', 'calc.exe'},

@@ -293,15 +293,27 @@ async def agent_confirm(request: Request, body: ConfirmationRequest):
             _save_confirmation_state(inner["confirmation_id"], state)
             return {"message": {"role": "assistant", "content": inner.get("reason", "Confirmation required")}, "confirmation": inner}
         messages.append({"role": "tool", "name": fn.get("name", ""), "tool_call_id": call.get("id"), "content": json.dumps(outcome.to_dict(), default=str)})
-    # Resume from the exact point at which approval interrupted the task.
-    resumed_result = await _run_agent_loop(
-        resume["model"], messages, resume["assistant_profile"],
-        resume.get("conversation_id"), resume["max_tool_rounds"],
-        initial_tool_result=None,
-        completed_rounds=resume.get("tool_rounds", 0) + 1,
-        bot_id=resume.get("bot_id"),
-        tool_allowlist=resume.get("tool_allowlist"),
-    )
+# Resume from the exact point at which approval interrupted the task.
+    try:
+        resumed_result = await _run_agent_loop(
+            resume["model"], messages, resume["assistant_profile"],
+            resume.get("conversation_id"), resume["max_tool_rounds"],
+            initial_tool_result=None,
+            completed_rounds=resume.get("tool_rounds", 0) + 1,
+            bot_id=resume.get("bot_id"),
+            tool_allowlist=resume.get("tool_allowlist"),
+        )
+    except HTTPException as exc:
+        # The approved action already ran; never fail the confirm because the
+        # continuation loop exhausted its tool-call budget.
+        if exc.status_code == 500 and "tool-call limit" in str(exc.detail):
+            resumed_result = {
+                "message": {"role": "assistant", "content": "The approved action completed, but Jarvis reached its tool-call limit while continuing. Repeat the request to finish the remaining steps."},
+                "status": "partial",
+                "approval_executed": True,
+            }
+        else:
+            raise
     project_id = resume.get("project_id")
     task_id = resume.get("task_id")
     if project_id and task_id:
