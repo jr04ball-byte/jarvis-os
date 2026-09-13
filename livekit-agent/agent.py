@@ -13,7 +13,7 @@ from livekit.agents import Agent, AgentServer, AgentSession, RunContext, functio
 from livekit.plugins import google
 
 ROOT = Path(__file__).resolve().parent.parent
-load_dotenv(ROOT / ".env")
+load_dotenv(ROOT / ".env", override=True)
 if os.getenv("GEMINI_API_KEY") and not os.getenv("GOOGLE_API_KEY"):
     os.environ["GOOGLE_API_KEY"] = os.environ["GEMINI_API_KEY"]
 
@@ -40,6 +40,7 @@ class JarvisVoiceAgent(Agent):
         Args:
             command: The user's complete requested system action.
         """
+        load_dotenv(ROOT / ".env", override=True)
         headers = {"Content-Type": "application/json"}
         token = os.getenv("AI_API_TOKEN", "").strip()
         if token:
