@@ -15,6 +15,9 @@ This is a repair of the supplied ai-system-update.zip, not a replacement archite
 - Updated the Swift companion sample with a configurable gateway URL and Files picker uploads. It remains a source sample that requires Xcode on macOS for signing and device validation.
 - Replaced the PC dashboard's static “Weather not connected” placeholder with a cached live Open-Meteo feed and a saved weather-location setting. No weather API key is required.
 - The PC dashboard now discovers the connected Google OAuth account from the gateway on every refresh. Its account field is read-only and its Connect Google action starts the real OAuth flow, preventing the old API-key/email-field confusion.
+- Time-sensitive questions now route through the agent path. The system prompt injects the authoritative host date/time and forbids alternate-timeline or knowledge-cutoff excuses. `research_search` uses Exa when configured and otherwise uses the existing Gemini key with Google Search grounding, returning its grounded answer and source links.
+- The PC dashboard has local spoken replies enabled by default through the browser speech engine, with a persistent Voice On/Off control. Starting push-to-talk cancels current speech for immediate interruption. This adds no speech API cost and keeps text-to-speech local.
+- Jarvis now receives explicit policy to save durable, non-sensitive user preferences and goals through its existing fact-memory tool, recall them for personalization, and never silently store credentials or other sensitive data.
 
 ## Verification
 

@@ -129,12 +129,42 @@ def test_web_search_unconfigured(monkeypatch):
 
     monkeypatch.delenv("EXA_API_KEY", raising=False)
     monkeypatch.setattr(services, "EXA_API_KEY", "")
+    monkeypatch.setattr(services, "GEMINI_API_KEY", "")
 
     async def run():
         out = await web_search("hello")
         assert out["configured"] is False
 
     asyncio.run(run())
+
+
+def test_web_search_uses_gemini_grounding_without_exa(monkeypatch):
+    import asyncio
+
+    monkeypatch.setattr(services, "EXA_API_KEY", "")
+    monkeypatch.setattr(services, "GEMINI_API_KEY", "test-key")
+    monkeypatch.setattr(services, "GEMINI_MODEL", "gemini-test")
+
+    class Response:
+        status_code = 200
+        def json(self):
+            return {"candidates": [{
+                "content": {"parts": [{"text": "The verified current answer."}]},
+                "groundingMetadata": {"groundingChunks": [{"web": {"title": "Source", "uri": "https://example.test/fact"}}]},
+            }]}
+
+    class Client:
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args): return None
+        async def post(self, url, headers, json):
+            assert json["tools"] == [{"google_search": {}}]
+            return Response()
+
+    monkeypatch.setattr(services.httpx, "AsyncClient", lambda **kwargs: Client())
+    out = asyncio.run(web_search("current sports score"))
+    assert out["provider"] == "gemini_google_search"
+    assert out["answer"] == "The verified current answer."
+    assert out["sources"][0]["url"] == "https://example.test/fact"
 
 
 def test_configuration_snapshot_reports_warnings():

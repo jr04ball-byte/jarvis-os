@@ -13,6 +13,7 @@
     - api-gateway/assets/neon-neural-v25.mp4
     - api-gateway/assets/neon-neural-v25.png
   - api-gateway/blender_worker.py
+  - api-gateway/bots.py
   - api-gateway/brains.py
   - api-gateway/budgets.py
   - api-gateway/companion-manifest.json
@@ -52,6 +53,7 @@
   - api-gateway/routes/
     - api-gateway/routes/__init__.py
     - api-gateway/routes/auth.py
+    - api-gateway/routes/bots.py
     - api-gateway/routes/chat.py
     - api-gateway/routes/companion.py
     - api-gateway/routes/dashboard.py
@@ -63,10 +65,12 @@
     - api-gateway/routes/voice_duplex.py
     - api-gateway/routes/weather.py
     - api-gateway/routes/workers.py
+  - api-gateway/routines.py
   - api-gateway/schema_validation.py
   - api-gateway/schemas.py
   - api-gateway/security.py
   - api-gateway/services.py
+  - api-gateway/skills.py
   - api-gateway/store.py
   - api-gateway/telemetry_collector.py
   - api-gateway/tool_result.py
@@ -164,6 +168,7 @@
   - tests/test_app_lifecycle.py
   - tests/test_auth_gate.py
   - tests/test_autofix_cycle.py
+  - tests/test_bots.py
   - tests/test_brains_failover.py
   - tests/test_budgets.py
   - tests/test_companion_uploads.py
@@ -175,9 +180,11 @@
   - tests/test_orchestrator.py
   - tests/test_project_worker_fixture_e2e.py
   - tests/test_provider_contracts.py
+  - tests/test_routines.py
   - tests/test_routing_v181.py
   - tests/test_services_advanced.py
   - tests/test_services_unit.py
+  - tests/test_skills.py
   - tests/test_sqlite_lifecycle.py
   - tests/test_telemetry.py
   - tests/test_tool_router.py

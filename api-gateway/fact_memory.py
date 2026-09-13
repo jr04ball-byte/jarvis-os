@@ -1,4 +1,4 @@
-"""Explicit facts in Jarvis's existing conversation database (single local owner)."""
+"""Explicit facts in Jarvis's conversation database, scoped by owner."""
 import hashlib
 import os
 import re
@@ -8,9 +8,11 @@ from pathlib import Path
 _lock = threading.RLock()
 
 
-def facts(db, action, fact="", fact_id=""):
+def facts(db, action, fact="", fact_id="", owner="local-owner"):
     from events import MemoryUpdated, bus
-    owner = "local-owner"  # Server-owned scope; never supplied by the model.
+    owner = str(owner or "local-owner").strip()
+    if not re.fullmatch(r"[A-Za-z0-9_.:-]{1,128}", owner):
+        raise ValueError("invalid memory owner")
     with _lock, db._connect() as conn:
         conn.execute("CREATE TABLE IF NOT EXISTS explicit_facts (owner TEXT, id TEXT, text TEXT, PRIMARY KEY(owner,id))")
         conn.execute("BEGIN IMMEDIATE")
@@ -28,14 +30,16 @@ def facts(db, action, fact="", fact_id=""):
             deleted = conn.execute("DELETE FROM explicit_facts WHERE owner=? AND id=?", (owner, fact_id)).rowcount
             if not deleted:
                 return {"status": "not_found", "error": "No fact matches that ID"}
+        elif action == "forget_owner":
+            conn.execute("DELETE FROM explicit_facts WHERE owner=?", (owner,))
         rows = [{"id": i, "text": t} for i,t in conn.execute("SELECT id,text FROM explicit_facts WHERE owner=? ORDER BY id",(owner,))]
         conn.commit()
         directory = Path(db.db_path).parent / "memory-mirror"
         directory.mkdir(parents=True, exist_ok=True)
-        target = directory / "explicit-facts.md"
+        target = directory / ("explicit-facts.md" if owner == "local-owner" else f"explicit-facts-{owner}.md")
         temporary = target.with_suffix('.tmp')
         temporary.write_text("# Remembered facts\n\n" + "\n".join(f"- {r['text']}" for r in rows), encoding="utf-8")
         os.replace(temporary, target)
     if action != "recall_facts":
-        bus.emit(MemoryUpdated(scope="facts", key=fact_id))
+        bus.emit(MemoryUpdated(scope=f"facts:{owner}", key=fact_id))
     return {"status": "success", "facts": rows, "fact_id": fact_id}

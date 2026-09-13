@@ -44,6 +44,7 @@ from fastapi.responses import JSONResponse  # noqa: E402
 from maintenance import MaintenanceWorker
 from routes import (  # noqa: E402
     auth,
+    bots,
     chat,
     companion,
     dashboard,
@@ -56,6 +57,7 @@ from routes import (  # noqa: E402
     weather,
     workers,
 )
+from routines import scheduler_loop  # noqa: E402
 
 # Re-exported for backward compatibility with older integrations/tests.
 from store import ConversationDB as ConversationDB  # noqa: E402,F401
@@ -82,6 +84,9 @@ async def lifespan(app: FastAPI):
     app.state.activity.start()
     app.state.maintenance = MaintenanceWorker(data_dir(), event_bus)
     maintenance_task = asyncio.create_task(app.state.maintenance.run())
+    routine_task = asyncio.create_task(scheduler_loop(
+        container.get("routines"), container.get("orchestrator"), container.get("bots")
+    ))
     # Recover interrupted tasks on startup.
     try:
         from deps import orchestrator
@@ -94,6 +99,11 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
+        routine_task.cancel()
+        try:
+            await routine_task
+        except asyncio.CancelledError:
+            pass
         app.state.maintenance.stop.set()
         await maintenance_task
         app.state.activity.close()
@@ -172,6 +182,7 @@ def create_app() -> FastAPI:
     app.include_router(brain_router)
     app.include_router(telemetry.router)
     app.include_router(companion.router)
+    app.include_router(bots.router)
     app.include_router(auth.router)
     app.include_router(providers.router)
     app.include_router(projects.router)

@@ -174,3 +174,57 @@ class VoiceTurnRequest(BaseModel):
 class ConfirmationRequest(BaseModel):
     confirmation_id: str = Field(min_length=20, max_length=128)
     confirmed: bool = False
+
+
+class BotCreateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    role: str = Field(min_length=1, max_length=160)
+    system_prompt: str = Field(min_length=1, max_length=12000)
+    brain: str = Field(default="gemini", max_length=100)
+    tool_allowlist: list[str] = Field(default_factory=list)
+
+
+class BotUpdateRequest(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    role: str | None = Field(default=None, min_length=1, max_length=160)
+    system_prompt: str | None = Field(default=None, min_length=1, max_length=12000)
+    brain: str | None = Field(default=None, max_length=100)
+    tool_allowlist: list[str] | None = None
+    status: Literal["active", "paused", "archived"] | None = None
+
+
+class BotChatRequest(BaseModel):
+    messages: list[ChatMessage]
+    max_tool_rounds: int = Field(default=5, ge=1, le=8)
+
+
+class BotDirectMessageRequest(BaseModel):
+    content: str = Field(min_length=1, max_length=12000)
+    from_bot_id: str | None = None
+
+
+class MemoryRememberRequest(BaseModel):
+    fact: str = Field(min_length=1, max_length=2000)
+
+
+class RoutineCreateRequest(BaseModel):
+    goal_template: str = Field(min_length=1, max_length=12000)
+    trigger_type: Literal["interval", "daily_at"]
+    trigger_value: str = Field(min_length=1, max_length=20)
+    enabled: bool = True
+
+
+class RoutineUpdateRequest(BaseModel):
+    goal_template: str | None = Field(default=None, min_length=1, max_length=12000)
+    trigger_type: Literal["interval", "daily_at"] | None = None
+    trigger_value: str | None = Field(default=None, min_length=1, max_length=20)
+    enabled: bool | None = None
+
+
+class SkillRecordStartRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    description: str = Field(default="", max_length=1000)
+
+
+class SkillRunRequest(BaseModel):
+    bot_id: str | None = None

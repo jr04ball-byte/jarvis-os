@@ -1,9 +1,9 @@
 {
-  "api_gateway_python_files": 50,
+  "api_gateway_python_files": 54,
   "app_version": "25.0.0-rc1",
   "largest_python_modules": [
     {
-      "lines": 1138,
+      "lines": 1187,
       "path": "api-gateway/services.py"
     },
     {
@@ -23,7 +23,7 @@
       "path": "api-gateway/routes/chat.py"
     },
     {
-      "lines": 311,
+      "lines": 313,
       "path": "api-gateway/routes/workers.py"
     },
     {
@@ -31,12 +31,12 @@
       "path": "api-gateway/orchestrator.py"
     },
     {
-      "lines": 293,
-      "path": "api-gateway/routes/voice.py"
+      "lines": 299,
+      "path": "api-gateway/deps.py"
     },
     {
-      "lines": 287,
-      "path": "api-gateway/deps.py"
+      "lines": 293,
+      "path": "api-gateway/routes/voice.py"
     },
     {
       "lines": 285,
@@ -52,6 +52,9 @@
       "deps",
       "local_tools"
     ],
+    "bots": [
+      "events"
+    ],
     "brains": [
       "budgets",
       "events",
@@ -61,8 +64,11 @@
       "brains"
     ],
     "deps": [
+      "bots",
       "orchestrator",
       "project_worker",
+      "routines",
+      "skills",
       "store"
     ],
     "fact_memory": [
@@ -74,6 +80,7 @@
       "deps",
       "events",
       "maintenance",
+      "routines",
       "store",
       "telemetry_collector"
     ],
@@ -92,6 +99,13 @@
     ],
     "routes.auth": [
       "google_oauth"
+    ],
+    "routes.bots": [
+      "deps",
+      "fact_memory",
+      "schemas",
+      "security",
+      "services"
     ],
     "routes.chat": [
       "budgets",
@@ -162,6 +176,9 @@
       "tools",
       "workspace_registry"
     ],
+    "routines": [
+      "events"
+    ],
     "services": [
       "activity",
       "blender_worker",
@@ -182,6 +199,9 @@
       "tools_registry",
       "workspace_registry"
     ],
+    "skills": [
+      "events"
+    ],
     "store": [
       "events"
     ],
@@ -195,14 +215,15 @@
   },
   "local_import_cycle_count": 0,
   "local_import_cycles": [],
-  "main_py_lines": 197,
-  "python_test_files": 36,
-  "registered_routes": 108,
+  "main_py_lines": 208,
+  "python_test_files": 39,
+  "registered_routes": 129,
   "route_groups": {
     "activity": 1,
     "agent": 3,
     "artifacts": 5,
     "auth": 4,
+    "bots": 18,
     "brain": 5,
     "calendar": 1,
     "chat": 2,
@@ -228,6 +249,7 @@
     "gmail": 1,
     "health": 1,
     "maintenance": 1,
+    "memory": 2,
     "model-lab": 6,
     "models": 1,
     "neon-neural-v25.mp4": 1,
@@ -240,6 +262,7 @@
     "research": 1,
     "root": 1,
     "sales": 1,
+    "skills": 1,
     "stats": 1,
     "system": 2,
     "telemetry": 2,
@@ -252,5 +275,5 @@
     "voice-live.html": 1,
     "weather": 1
   },
-  "services_py_lines": 1138
+  "services_py_lines": 1187
 }

@@ -299,6 +299,8 @@ async def agent_confirm(request: Request, body: ConfirmationRequest):
         resume.get("conversation_id"), resume["max_tool_rounds"],
         initial_tool_result=None,
         completed_rounds=resume.get("tool_rounds", 0) + 1,
+        bot_id=resume.get("bot_id"),
+        tool_allowlist=resume.get("tool_allowlist"),
     )
     project_id = resume.get("project_id")
     task_id = resume.get("task_id")

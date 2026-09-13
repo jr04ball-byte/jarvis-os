@@ -16,8 +16,11 @@ from pathlib import Path
 from typing import Any as Any
 
 from fastapi import Request
+from bots import BotStore
 from orchestrator import OrchestratorStore
 from project_worker import WorkerRunStore
+from routines import RoutineStore
+from skills import SkillStore
 from store import ConversationDB, DocumentRAG, PerformanceMonitor
 
 logger = logging.getLogger(__name__)
@@ -32,6 +35,9 @@ def data_dir() -> Path:
 
 ORCHESTRATOR_DB = data_dir() / "orchestrator.db"
 PROJECT_WORKER_DB = ORCHESTRATOR_DB.parent / "project_worker.db"
+BOTS_DB = ORCHESTRATOR_DB.parent / "bots.db"
+ROUTINES_DB = ORCHESTRATOR_DB.parent / "routines.db"
+SKILLS_DB = ORCHESTRATOR_DB.parent / "skills.db"
 
 
 class AppContainer:
@@ -51,6 +57,9 @@ class AppContainer:
             "monitor": PerformanceMonitor,
             "orchestrator": lambda: OrchestratorStore(ORCHESTRATOR_DB),
             "project_worker_runs": lambda: WorkerRunStore(str(PROJECT_WORKER_DB)),
+            "bots": lambda: BotStore(BOTS_DB),
+            "routines": lambda: RoutineStore(ROUTINES_DB),
+            "skills": lambda: SkillStore(SKILLS_DB),
         }
         self._instances: dict[str, Any] = {}
         self._overrides: dict[str, Any] = {}
@@ -134,6 +143,9 @@ rag = LazyService(container, "rag")
 monitor = LazyService(container, "monitor")
 orchestrator = LazyService(container, "orchestrator")
 project_worker_runs = LazyService(container, "project_worker_runs")
+bots = LazyService(container, "bots")
+routines = LazyService(container, "routines")
+skills = LazyService(container, "skills")
 
 
 # ---- Configuration + rate limiting (moved from main.py in V24 P2) ----

@@ -1,7 +1,7 @@
 # Jarvis OS — API Map (generated)
 
 **FastAPI application version:** `25.0.0-rc1`  
-**Registered API/UI routes:** **108**
+**Registered API/UI routes:** **129**
 
 | Methods | Path | Name |
 |---|---|---|
@@ -33,6 +33,24 @@
 | DELETE | `/v1/artifacts/{artifact_id}` | `artifact_delete` |
 | GET | `/v1/artifacts/{artifact_id}` | `artifact_get` |
 | PATCH | `/v1/artifacts/{artifact_id}` | `artifact_patch` |
+| GET | `/v1/bots` | `list_bots` |
+| POST | `/v1/bots` | `create_bot` |
+| DELETE | `/v1/bots/{bot_id}` | `delete_bot` |
+| GET | `/v1/bots/{bot_id}` | `get_bot` |
+| PATCH | `/v1/bots/{bot_id}` | `update_bot` |
+| POST | `/v1/bots/{bot_id}/chat` | `bot_chat` |
+| GET | `/v1/bots/{bot_id}/memory` | `bot_memory_recall` |
+| POST | `/v1/bots/{bot_id}/memory` | `bot_memory_remember` |
+| DELETE | `/v1/bots/{bot_id}/memory/{fact_id}` | `bot_memory_forget` |
+| POST | `/v1/bots/{bot_id}/message` | `bot_send_direct` |
+| GET | `/v1/bots/{bot_id}/routines` | `list_routines` |
+| POST | `/v1/bots/{bot_id}/routines` | `create_routine` |
+| DELETE | `/v1/bots/{bot_id}/routines/{routine_id}` | `delete_routine` |
+| PATCH | `/v1/bots/{bot_id}/routines/{routine_id}` | `update_routine` |
+| POST | `/v1/bots/{bot_id}/routines/{routine_id}/run` | `run_routine_now` |
+| GET | `/v1/bots/{bot_id}/skills` | `list_skills` |
+| POST | `/v1/bots/{bot_id}/skills/record/start` | `start_skill_recording` |
+| POST | `/v1/bots/{bot_id}/skills/record/stop` | `stop_skill_recording` |
 | POST | `/v1/brain/chat` | `brain_chat` |
 | GET | `/v1/brain/policy` | `brain_policy` |
 | POST | `/v1/brain/route` | `brain_route` |
@@ -71,6 +89,8 @@
 | POST | `/v1/gemini/live-token` | `gemini_live_token` |
 | GET | `/v1/gemini/status` | `gemini_status` |
 | GET | `/v1/maintenance` | `maintenance_status` |
+| GET | `/v1/memory/global` | `global_memory_recall` |
+| POST | `/v1/memory/global` | `global_memory_remember` |
 | POST | `/v1/model-lab/benchmark` | `model_lab_benchmark_route` |
 | GET | `/v1/model-lab/huggingface` | `model_lab_huggingface` |
 | POST | `/v1/model-lab/lmstudio/load` | `model_lab_load` |
@@ -97,6 +117,7 @@
 | POST | `/v1/project-worker/verify` | `project_worker_verify` |
 | POST | `/v1/research/search` | `research_search` |
 | POST | `/v1/sales/chat` | `sales_chat` |
+| POST | `/v1/skills/{skill_id}/run` | `run_skill` |
 | GET | `/v1/system/compute` | `system_compute` |
 | GET | `/v1/system/status` | `system_status` |
 | GET | `/v1/telemetry/events` | `telemetry_events` |

@@ -141,6 +141,42 @@ class MemoryUpdated(Event):
     key: str = ""
 
 
+@dataclass(frozen=True)
+class BotCreated(Event):
+    name: str = "bot.created"
+    bot_id: str = ""
+
+
+@dataclass(frozen=True)
+class RoutineTriggered(Event):
+    name: str = "routine.triggered"
+    routine_id: str = ""
+    bot_id: str = ""
+    project_id: str = ""
+
+
+@dataclass(frozen=True)
+class RoutineCompleted(Event):
+    name: str = "routine.completed"
+    routine_id: str = ""
+    bot_id: str = ""
+    project_id: str = ""
+
+
+@dataclass(frozen=True)
+class SkillRecorded(Event):
+    name: str = "skill.recorded"
+    skill_id: str = ""
+    bot_id: str = ""
+
+
+@dataclass(frozen=True)
+class SkillReplayed(Event):
+    name: str = "skill.replayed"
+    skill_id: str = ""
+    bot_id: str = ""
+
+
 Handler = Callable[[Event], Any]
 
 
