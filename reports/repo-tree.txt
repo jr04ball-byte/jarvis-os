@@ -61,6 +61,7 @@
     - api-gateway/routes/telemetry.py
     - api-gateway/routes/voice.py
     - api-gateway/routes/voice_duplex.py
+    - api-gateway/routes/weather.py
     - api-gateway/routes/workers.py
   - api-gateway/schema_validation.py
   - api-gateway/schemas.py
@@ -133,6 +134,8 @@
   - reports/v25-validation.md
   - reports/worker-engine.md
 - requirements-launcher.txt
+- scripts/
+  - scripts/enable-iphone-companion-firewall.ps1
 - SET-DEEPGRAM-KEY.bat
 - SET-GEMINI-CLOUD.bat
 - SET-LLAMA31-8B.bat
@@ -163,6 +166,7 @@
   - tests/test_autofix_cycle.py
   - tests/test_brains_failover.py
   - tests/test_budgets.py
+  - tests/test_companion_uploads.py
   - tests/test_container.py
   - tests/test_events.py
   - tests/test_handoff_followup.py
@@ -189,6 +193,7 @@
   - tests/test_v25_regression.py
   - tests/test_voice_duplex.py
   - tests/test_voice_turn.py
+  - tests/test_weather.py
   - tests/test_windows_repair.py
   - tests/voice-engine.test.js
 - tools/

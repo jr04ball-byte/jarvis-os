@@ -1,5 +1,5 @@
 {
-  "api_gateway_python_files": 49,
+  "api_gateway_python_files": 50,
   "app_version": "25.0.0-rc1",
   "largest_python_modules": [
     {
@@ -195,9 +195,9 @@
   },
   "local_import_cycle_count": 0,
   "local_import_cycles": [],
-  "main_py_lines": 195,
-  "python_test_files": 34,
-  "registered_routes": 104,
+  "main_py_lines": 197,
+  "python_test_files": 36,
+  "registered_routes": 108,
   "route_groups": {
     "activity": 1,
     "agent": 3,
@@ -207,7 +207,7 @@
     "calendar": 1,
     "chat": 2,
     "command-center": 1,
-    "companion": 4,
+    "companion": 7,
     "companion-manifest.json": 1,
     "companion-sw.js": 1,
     "compare": 1,
@@ -249,7 +249,8 @@
     "voice-duplex-worklet.js": 1,
     "voice-engine.js": 1,
     "voice-live": 1,
-    "voice-live.html": 1
+    "voice-live.html": 1,
+    "weather": 1
   },
   "services_py_lines": 1138
 }

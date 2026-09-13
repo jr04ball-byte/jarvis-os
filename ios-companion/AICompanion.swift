@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 @main
 struct AICompanionApp: App {
@@ -29,9 +30,14 @@ struct ContentView: View {
     @State private var text = ""
     @State private var reply = ""
     @State private var busy = false
+    @State private var uploading = false
+    @State private var showingImporter = false
+    @State private var uploadStatus = ""
     @AppStorage("aiConversationId") private var conversationId: Int = 0
+    @AppStorage("jarvisGatewayURL") private var gatewayURL = "http://YOUR-PC-IP:8000"
     @State private var apiToken: String = ""
-    private let baseURL = URL(string: "http://YOUR-PC-IP:8000")!
+
+    private var baseURL: URL? { URL(string: gatewayURL.trimmingCharacters(in: .whitespacesAndNewlines)) }
 
     var body: some View {
         NavigationStack {
@@ -39,6 +45,17 @@ struct ContentView: View {
                 ScrollView { Text(reply.isEmpty ? "Ask your AI anything." : reply).frame(maxWidth: .infinity, alignment: .leading) }
                 SecureField("Required API token", text: $apiToken)
                     .textFieldStyle(.roundedBorder)
+                TextField("Jarvis gateway URL", text: $gatewayURL)
+                    .textFieldStyle(.roundedBorder)
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.URL)
+                Button(uploading ? "Uploading…" : "Send Files to Jarvis") {
+                    showingImporter = true
+                }
+                .disabled(uploading || apiToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                if !uploadStatus.isEmpty {
+                    Text(uploadStatus).font(.footnote).frame(maxWidth: .infinity, alignment: .leading)
+                }
                 HStack {
                     TextField("Ask your AI…", text: $text, axis: .vertical)
                         .textFieldStyle(.roundedBorder)
@@ -53,6 +70,12 @@ struct ContentView: View {
                 }
             }
             .navigationTitle("AI System")
+            .fileImporter(isPresented: $showingImporter, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
+                switch result {
+                case .success(let files): Task { await upload(files) }
+                case .failure(let error): uploadStatus = "File selection failed: \(error.localizedDescription)"
+                }
+            }
         }
     }
 
@@ -67,6 +90,7 @@ struct ContentView: View {
 
     private func ensureConversation() async throws -> Int {
         if conversationId > 0 { return conversationId }
+        guard let baseURL else { throw URLError(.badURL) }
         var req = URLRequest(url: baseURL.appendingPathComponent("v1/conversations"))
         req.httpMethod = "POST"
         headers(json: true).forEach { req.setValue($1, forHTTPHeaderField: $0) }
@@ -89,6 +113,7 @@ struct ContentView: View {
         let prompt = text.trimmingCharacters(in: .whitespacesAndNewlines); text = ""
         do {
             let cid = try await ensureConversation()
+            guard let baseURL else { throw URLError(.badURL) }
             var req = URLRequest(url: baseURL.appendingPathComponent("v1/companion/chat"))
             req.httpMethod = "POST"
             headers(json: true).forEach { req.setValue($1, forHTTPHeaderField: $0) }
@@ -105,6 +130,45 @@ struct ContentView: View {
         } catch {
             reply = "Connection error: \(error.localizedDescription)"
         }
+    }
+
+    func upload(_ urls: [URL]) async {
+        guard let baseURL else { uploadStatus = "Enter a valid Jarvis gateway URL."; return }
+        uploading = true; defer { uploading = false }
+        var completed = 0
+        for url in urls {
+            let access = url.startAccessingSecurityScopedResource()
+            do {
+                let values = try url.resourceValues(forKeys: [.fileSizeKey])
+                if (values.fileSize ?? 0) > 250 * 1024 * 1024 {
+                    throw NSError(domain: "JarvisUpload", code: 413,
+                                  userInfo: [NSLocalizedDescriptionKey: "\(url.lastPathComponent) exceeds 250 MB"])
+                }
+                let data = try Data(contentsOf: url, options: .mappedIfSafe)
+                if access { url.stopAccessingSecurityScopedResource() }
+                let boundary = "Jarvis-\(UUID().uuidString)"
+                var body = Data()
+                body.append("--\(boundary)\r\nContent-Disposition: form-data; name=\"folder\"\r\n\r\nInbox\r\n".data(using: .utf8)!)
+                body.append("--\(boundary)\r\nContent-Disposition: form-data; name=\"file\"; filename=\"\(url.lastPathComponent.replacingOccurrences(of: "\"", with: "_"))\"\r\nContent-Type: application/octet-stream\r\n\r\n".data(using: .utf8)!)
+                body.append(data)
+                body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+                var request = URLRequest(url: baseURL.appendingPathComponent("v1/companion/upload"))
+                request.httpMethod = "POST"
+                headers().forEach { request.setValue($1, forHTTPHeaderField: $0) }
+                request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+                let (_, response) = try await URLSession.shared.upload(for: request, from: body)
+                guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+                    throw URLError(.badServerResponse)
+                }
+                completed += 1
+                uploadStatus = "Uploaded \(completed) of \(urls.count): \(url.lastPathComponent)"
+            } catch {
+                if access { url.stopAccessingSecurityScopedResource() }
+                uploadStatus = "Uploaded \(completed) of \(urls.count). Failed: \(error.localizedDescription)"
+                return
+            }
+        }
+        uploadStatus = "Uploaded \(completed) file\(completed == 1 ? "" : "s") to your Jarvis PC."
     }
 }
 

@@ -284,6 +284,7 @@ class OrchestratorStore:
         stay blocked but are flagged for recovery.
         """
         recovered: list[dict[str, Any]] = []
+        now = utc_now()
         with self._lock, self._db() as c:
             rows = c.execute(
                 "SELECT * FROM jarvis_tasks WHERE status IN ('running', 'blocked', 'awaiting_approval')"
@@ -291,7 +292,6 @@ class OrchestratorStore:
             for row in rows:
                 tid = row["id"]
                 pid = row["project_id"]
-                now = utc_now()
                 c.execute("UPDATE jarvis_tasks SET status='ready', updated_at=? WHERE id=?", (now, tid))
                 updated = c.execute("SELECT * FROM jarvis_tasks WHERE id=?", (tid,)).fetchone()
                 if updated:

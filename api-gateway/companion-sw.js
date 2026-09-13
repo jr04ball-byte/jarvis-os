@@ -1,1 +1,4 @@
-const CACHE="ai-system-companion-v1";self.addEventListener("install",e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(["/companion"])))) ;self.addEventListener("fetch",e=>{if(e.request.method!=="GET")return;e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)))})
+const CACHE="jarvis-companion-v2";
+self.addEventListener("install",event=>{self.skipWaiting();event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(["/companion"]))) });
+self.addEventListener("activate",event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key))))));
+self.addEventListener("fetch",event=>{if(event.request.method!=="GET"||event.request.url.includes("/v1/"))return;event.respondWith(fetch(event.request).catch(()=>caches.match(event.request)))});

@@ -1,7 +1,7 @@
 # Jarvis OS — API Map (generated)
 
 **FastAPI application version:** `25.0.0-rc1`  
-**Registered API/UI routes:** **104**
+**Registered API/UI routes:** **108**
 
 | Methods | Path | Name |
 |---|---|---|
@@ -43,7 +43,10 @@
 | GET | `/v1/command-center/overview` | `command_center_overview` |
 | POST | `/v1/companion/chat` | `chat` |
 | POST | `/v1/companion/confirm` | `confirm` |
+| GET | `/v1/companion/files` | `files` |
+| GET | `/v1/companion/files/{folder}/{filename}` | `download` |
 | GET | `/v1/companion/status` | `status` |
+| POST | `/v1/companion/upload` | `upload` |
 | POST | `/v1/compare` | `compare_models` |
 | GET | `/v1/computer/capabilities` | `computer_capabilities_route` |
 | GET | `/v1/computer/observe` | `computer_observe_route` |
@@ -103,6 +106,7 @@
 | GET | `/v1/tools/local` | `local_tools_inventory` |
 | POST | `/v1/voice/transcribe` | `transcribe_voice` |
 | POST | `/v1/voice/turn` | `voice_turn` |
+| GET | `/v1/weather/current` | `current_weather` |
 | GET | `/voice` | `voice_ui` |
 | GET | `/voice-duplex` | `duplex_ui` |
 | GET | `/voice-duplex-worklet.js` | `duplex_worklet` |

@@ -53,6 +53,7 @@ from routes import (  # noqa: E402
     telemetry,
     voice,
     voice_duplex,
+    weather,
     workers,
 )
 
@@ -178,6 +179,7 @@ def create_app() -> FastAPI:
     app.include_router(chat.router)
     app.include_router(voice.router)
     app.include_router(voice_duplex.router)
+    app.include_router(weather.router)
     app.include_router(dashboard.router)
     app.include_router(health.router)
 
