@@ -211,7 +211,7 @@ async function executeAction(name, args) {
     }
   }
 
-  return { status: 'ok', detail: 'Executed locally' };
+  return { status: 'error', detail: `Unsupported voice action: ${name}. No local action was executed.` };
 }
 
 async function connect() {

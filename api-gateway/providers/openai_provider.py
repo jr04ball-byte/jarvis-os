@@ -37,7 +37,9 @@ class OpenAIProvider(ProviderAdapter):
     @staticmethod
     def _input(messages: list[ProviderMessage]) -> list[dict[str, Any]]:
         out: list[dict[str, Any]] = []
-        for msg in messages[-100:]:
+        system = [msg for msg in messages if msg.role == "system"]
+        recent = [msg for msg in messages if msg.role != "system"][-100:]
+        for msg in system + recent:
             role = msg.role if msg.role in {"system", "user", "assistant"} else "user"
             out.append({"role": role, "content": msg.content})
         return out

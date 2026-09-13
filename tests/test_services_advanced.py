@@ -1,6 +1,7 @@
 """V24 P9: deeper services coverage (repair loop, persist paths, tool branches)."""
 import asyncio
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -16,7 +17,7 @@ from store import ConversationDB
 def test_confirmation_expiry_and_pruning():
     ticket = services._create_confirmation("computer_type", {"text": "hi"}, "why")
     tid = ticket["confirmation_id"]
-    services._PENDING_ACTIONS[tid]["created_at"] -= 700
+    services._PENDING_ACTIONS[tid]["deadline"] = time.monotonic() - 1
     with pytest.raises(HTTPException) as exc:
         services._consume_confirmation(tid)
     assert exc.value.status_code == 410

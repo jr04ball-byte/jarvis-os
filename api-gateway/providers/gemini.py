@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import asyncio
 from collections.abc import AsyncGenerator
 from typing import Any
 
@@ -69,11 +70,15 @@ class GeminiProvider(ProviderAdapter):
         }
         url = f"{self.base_url}/models/{self.model}:generateContent"
         async with httpx.AsyncClient(timeout=120.0) as client:
-            response = await client.post(
-                url,
-                headers={"x-goog-api-key": self.api_key, "Content-Type": "application/json"},
-                json=payload,
-            )
+            for attempt in range(3):
+                response = await client.post(
+                    url,
+                    headers={"x-goog-api-key": self.api_key, "Content-Type": "application/json"},
+                    json=payload,
+                )
+                if response.status_code not in (429, 500, 502, 503, 504) or attempt == 2:
+                    break
+                await asyncio.sleep(1.0 * (2 ** attempt))
         if response.status_code != 200:
             raise RuntimeError(f"gemini {response.status_code}: {response.text[:300]}")
         data = response.json()

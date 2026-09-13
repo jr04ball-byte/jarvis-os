@@ -227,14 +227,21 @@ _PENDING_ACTIONS: dict[str, dict[str, Any]] = {}
 _PENDING_TTL_SECONDS = 600
 
 
+def _confirmation_expired(item: dict) -> bool:
+    # Wall-clock adjustments must not invalidate an approval in this process.
+    if "deadline" in item:
+        return time.monotonic() > item["deadline"]
+    return time.time() - item["created_at"] > _PENDING_TTL_SECONDS
+
+
 def _create_confirmation(tool_name: str, arguments: dict, reason: str) -> dict:
     ticket = secrets.token_urlsafe(24)
     now = time.time()
     with _PENDING_LOCK:
-        expired = [k for k,v in _PENDING_ACTIONS.items() if now - v["created_at"] > _PENDING_TTL_SECONDS]
+        expired = [k for k,v in _PENDING_ACTIONS.items() if _confirmation_expired(v)]
         for k in expired:
             _PENDING_ACTIONS.pop(k, None)
-        _PENDING_ACTIONS[ticket] = {"tool": tool_name, "arguments": dict(arguments), "reason": reason, "created_at": now}
+        _PENDING_ACTIONS[ticket] = {"tool": tool_name, "arguments": dict(arguments), "reason": reason, "created_at": now, "deadline": time.monotonic() + _PENDING_TTL_SECONDS}
     from events import Event, bus
     bus.emit(Event(name="approval.required"))
     return {"status":"confirmation_required","confirmation_id":ticket,"action":tool_name,"args":dict(arguments),"reason":reason,"expires_in":_PENDING_TTL_SECONDS}
@@ -245,7 +252,7 @@ def _consume_confirmation(ticket: str) -> dict:
         item = _PENDING_ACTIONS.pop(ticket, None)
     if not item:
         raise HTTPException(404, "confirmation expired or not found")
-    if time.time() - item["created_at"] > _PENDING_TTL_SECONDS:
+    if _confirmation_expired(item):
         raise HTTPException(410, "confirmation expired")
     return item
 
@@ -403,7 +410,7 @@ def _artifact_read(artifact_id: str) -> dict[str, Any]:
 def _pending_snapshot() -> dict[str, Any]:
     now = time.time()
     with _PENDING_LOCK:
-        expired = [k for k, v in _PENDING_ACTIONS.items() if now - v["created_at"] > _PENDING_TTL_SECONDS]
+        expired = [k for k, v in _PENDING_ACTIONS.items() if _confirmation_expired(v)]
         for key in expired:
             _PENDING_ACTIONS.pop(key, None)
         items = [

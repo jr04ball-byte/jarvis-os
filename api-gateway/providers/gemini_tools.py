@@ -1,4 +1,6 @@
 """Native Gemini function turns; raw model parts retain thought signatures."""
+import asyncio
+from fastapi import HTTPException
 import os
 import json
 import httpx
@@ -45,9 +47,22 @@ async def turn(client, model, messages, tools):
     if system:
         payload['systemInstruction'] = {'parts': [{'text': '\n\n'.join(system)}]}
     base = os.getenv('GEMINI_BASE', 'https://generativelanguage.googleapis.com/v1beta').rstrip('/')
-    response = await client.post(f'{base}/models/{model}:generateContent',
-                                 headers={'x-goog-api-key': os.environ['GEMINI_API_KEY']}, json=payload)
-    response.raise_for_status()
+    for attempt in range(3):
+        try:
+            response = await client.post(f'{base}/models/{model}:generateContent',
+                                         headers={'x-goog-api-key': os.environ['GEMINI_API_KEY']}, json=payload)
+        except httpx.RequestError:
+            if attempt < 2:
+                await asyncio.sleep(0.5 * (2 ** attempt))
+                continue
+            raise HTTPException(503, "Cannot reach Gemini right now. Please try again shortly.") from None
+        if response.status_code in (429, 500, 502, 503, 504) and attempt < 2:
+            await asyncio.sleep(0.5 * (2 ** attempt))
+            continue
+        if response.status_code >= 400:
+            status = 503 if response.status_code >= 500 else response.status_code
+            raise HTTPException(status, "Gemini is temporarily unavailable or its request limit was reached. Please try again shortly." if status in (429, 503) else "Gemini rejected the request. Check the provider configuration.")
+        break
     candidates = response.json().get('candidates') or []
     if not candidates:
         raise RuntimeError('Gemini returned no candidate')
