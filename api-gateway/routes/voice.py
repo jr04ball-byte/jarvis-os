@@ -23,7 +23,7 @@ from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
 from events import Event, bus as event_bus
 from local_voice import transcribe_local
-from schemas import ChatRequest, DeepgramSpeakRequest, VoiceTurnRequest
+from schemas import ChatRequest, DeepgramSpeakRequest, GeminiSpeakRequest, VoiceTurnRequest
 from services import (
     _run_agent_loop,
     apply_system_prompt,
@@ -39,6 +39,58 @@ GATEWAY_DIR = Path(__file__).resolve().parent.parent
 
 
 router = APIRouter()
+
+
+def _pcm_wav(pcm: bytes, rate: int = 24000) -> bytes:
+    output = io.BytesIO()
+    with wave.open(output, "wb") as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)
+        wav.setframerate(rate)
+        wav.writeframes(pcm)
+    return output.getvalue()
+
+
+@router.post("/v1/gemini-speak")
+async def gemini_speak(req: GeminiSpeakRequest):
+    """Create an exact spoken rendering of a Jarvis response with Gemini TTS."""
+    api_key = (os.getenv("GEMINI_API_KEY") or "").strip()
+    if not api_key:
+        raise HTTPException(503, "Gemini is not configured for speech")
+    text = req.text.strip()
+    voice = (req.voice or os.getenv("GEMINI_VOICE_NAME") or "Orus").strip()
+    model = (os.getenv("GEMINI_TTS_MODEL") or "gemini-2.5-flash-preview-tts").strip()
+    body = {
+        "contents": [{"parts": [{"text": "Speak naturally and clearly as Jarvis: " + text}]}],
+        "generationConfig": {
+            "responseModalities": ["AUDIO"],
+            "speechConfig": {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": voice}}},
+        },
+    }
+    try:
+        async with httpx.AsyncClient(timeout=90.0) as client:
+            response = await client.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
+                headers={"x-goog-api-key": api_key, "Content-Type": "application/json"}, json=body,
+            )
+        if response.status_code != 200:
+            logger.warning("Gemini TTS failed: %s", response.text[:500])
+            raise HTTPException(502, "Gemini speech synthesis failed")
+        data = response.json()
+        parts = (((data.get("candidates") or [{}])[0].get("content") or {}).get("parts") or [])
+        encoded = next((part.get("inlineData", {}).get("data") or part.get("inline_data", {}).get("data") for part in parts if part.get("inlineData") or part.get("inline_data")), None)
+        if not encoded:
+            raise HTTPException(502, "Gemini returned no speech audio")
+        pcm = base64.b64decode(encoded)
+        if not pcm:
+            raise HTTPException(502, "Gemini returned empty speech audio")
+        event_bus.emit(Event(name="voice.speaking", payload={"provider": "gemini", "voice": voice}))
+        return StreamingResponse(iter([_pcm_wav(pcm)]), media_type="audio/wav", headers={"Cache-Control": "no-store", "X-Voice-Provider": "gemini"})
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Gemini TTS error")
+        raise HTTPException(502, f"Gemini speech synthesis failed: {exc}") from exc
 
 
 @router.post("/v1/deepgram-token")

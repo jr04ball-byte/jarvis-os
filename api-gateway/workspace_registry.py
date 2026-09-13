@@ -15,28 +15,29 @@ PROJECTS = {
         "label": "Email Agent",
         "path_env": "JARVIS_EMAIL_AGENT_PATH",
         "url_env": "EMAIL_AGENT_URL",
-        "default_path": r"C:\Users\jr04b\email-agent-saas",
+        "default_path": r"%USERPROFILE%\email-agent-saas",
         "keywords": ("email agent", "email-agent", "email automation", "invoice"),
     },
     "ai_workforce": {
         "label": "AI Workforce",
         "path_env": "JARVIS_AI_WORKFORCE_PATH",
         "url_env": "AI_WORKFORCE_URL",
-        "default_path": r"C:\Users\jr04b\ai-workforce",
+        "default_path": r"%USERPROFILE%\ai-workforce",
         "keywords": ("ai workforce", "ai-workforce", "overseer", "workforce"),
     },
     "outbound_ai": {
         "label": "Outbound AI",
         "path_env": "JARVIS_OUTBOUND_AI_PATH",
         "url_env": "OUTBOUND_AI_URL",
-        "default_path": r"C:\Users\jr04b\outbound-ai",
+        "default_path": r"%USERPROFILE%\outbound-ai",
         "keywords": ("outbound ai", "outbound-ai", "call bot", "voice bot"),
     },
 }
 
 
 def _path_value(spec: dict[str, Any]) -> str:
-    return os.getenv(spec["path_env"], spec["default_path"]).strip()
+    raw = (os.getenv(spec["path_env"]) or spec["default_path"]).strip()
+    return os.path.expandvars(raw)
 
 
 def match_target(goal: str) -> str | None:
@@ -51,13 +52,13 @@ def snapshot() -> list[dict[str, Any]]:
     result = []
     for key, spec in PROJECTS.items():
         raw = _path_value(spec)
-        path = Path(raw)
+        path = Path(raw) if raw else None
         result.append({
             "id": key,
             "label": spec["label"],
             "path": raw,
-            "path_exists": path.exists(),
-            "path_is_directory": path.is_dir(),
+            "path_exists": bool(path and path.exists()),
+            "path_is_directory": bool(path and path.is_dir()),
             "url": os.getenv(spec["url_env"], "").strip() or None,
             "path_env": spec["path_env"],
             "url_env": spec["url_env"],

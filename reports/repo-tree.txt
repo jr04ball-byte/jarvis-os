@@ -125,6 +125,7 @@
 - OAUTH_README.md
 - OPEN-JARVIS.bat
 - package.json
+- pytest.ini
 - README.md
 - REPAIR-HANDOFF.md
 - reports/

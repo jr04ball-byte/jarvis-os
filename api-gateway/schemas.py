@@ -80,6 +80,11 @@ class DeepgramSpeakRequest(BaseModel):
     speed: float | None = 1.0
 
 
+class GeminiSpeakRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=6000)
+    voice: str | None = Field(default=None, max_length=40)
+
+
 class ArtifactRequest(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     kind: str = Field(default="markdown", max_length=40)

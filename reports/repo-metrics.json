@@ -23,6 +23,10 @@
       "path": "api-gateway/routes/chat.py"
     },
     {
+      "lines": 345,
+      "path": "api-gateway/routes/voice.py"
+    },
+    {
       "lines": 313,
       "path": "api-gateway/routes/workers.py"
     },
@@ -33,10 +37,6 @@
     {
       "lines": 299,
       "path": "api-gateway/deps.py"
-    },
-    {
-      "lines": 293,
-      "path": "api-gateway/routes/voice.py"
     },
     {
       "lines": 285,
@@ -217,7 +217,7 @@
   "local_import_cycles": [],
   "main_py_lines": 208,
   "python_test_files": 39,
-  "registered_routes": 129,
+  "registered_routes": 130,
   "route_groups": {
     "activity": 1,
     "agent": 3,
@@ -246,6 +246,7 @@
     "deepgram-token": 1,
     "documents": 2,
     "gemini": 3,
+    "gemini-speak": 1,
     "gmail": 1,
     "health": 1,
     "maintenance": 1,

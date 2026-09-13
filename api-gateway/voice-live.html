@@ -68,7 +68,7 @@ function log(who, text) {
 }
 function setState(s) { $('state').textContent = s; }
 function fileBase64(bytes) {
-  let bin = ''; const CH = 0x8000;
+  let bin = ''; const CH = 0x2000;
   for (let i = 0; i < bytes.length; i += CH) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CH));
   return btoa(bin);
 }
@@ -189,9 +189,11 @@ function setupMsg() {
 async function executeAction(name, args) {
   log('System', `Executing: ${name}(${JSON.stringify(args)})`);
 
-  if (window.opener && window.opener.__jarvisGlobe) {
-    if (name === 'fly_to_target') return window.opener.__jarvisGlobe.flyTo(args.lat, args.lon, args.alt || 25000);
-    if (name === 'set_sensor_mode') return window.opener.__jarvisGlobe.setSensor(args.mode);
+  let globe = null;
+  try { globe = window.opener && window.opener.__jarvisGlobe; } catch {}
+  if (globe) {
+    if (name === 'fly_to_target') return globe.flyTo(args.lat, args.lon, args.alt || 25000);
+    if (name === 'set_sensor_mode') return globe.setSensor(args.mode);
   }
 
   if (name === 'run_project_worker') {
@@ -250,7 +252,7 @@ async function handleServer(e) {
   let j;
   try { j = JSON.parse(typeof e.data === 'string' ? e.data : new TextDecoder().decode(e.data)); } catch { return; }
 
-  if (j.interrupted) { stopPlayback(); setState('SPEAKING — interrupted'); return; }
+  if (j.interrupted) { stopPlayback(); setState('LISTENING — interrupted'); return; }
 
   if (j.toolCall) {
     const responses = [];
@@ -338,6 +340,8 @@ async function start() {
     setState('ERROR — ' + err.message);
     log('System', 'Start failed: ' + err.message);
     stopMic();
+    try { ws && ws.close(); } catch {}
+    ws = null;
   }
 }
 

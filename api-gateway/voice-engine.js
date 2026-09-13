@@ -83,7 +83,7 @@
     if (speechFrames < minSpeechFrames) return false;
     const now = Number(o.nowMs);
     const last = Number(o.lastBargeMs);
-    if (Number.isFinite(now) && Number.isFinite(last)) {
+    if (Number.isFinite(now) && Number.isFinite(last) && last > 0) {
       if (now - last < (o.cooldownMs != null ? o.cooldownMs : BARGE_COOLDOWN_MS)) return false;
     }
     return true;
@@ -186,7 +186,7 @@
     return String(t == null ? '' : t)
       .replace(/```[\s\S]*?```/g, ' Code omitted. ')
       .replace(/https?:\/\/\S+/g, ' web link ')
-      .replace(/[#*_>`~]/g, '')
+      .replace(/[#*_>`~]/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
   }

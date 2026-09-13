@@ -1,7 +1,7 @@
 # Jarvis OS — API Map (generated)
 
 **FastAPI application version:** `25.0.0-rc1`  
-**Registered API/UI routes:** **129**
+**Registered API/UI routes:** **130**
 
 | Methods | Path | Name |
 |---|---|---|
@@ -85,6 +85,7 @@
 | POST | `/v1/deepgram-token` | `deepgram_token` |
 | POST | `/v1/documents` | `upload_document` |
 | POST | `/v1/documents/upload-file` | `upload_file` |
+| POST | `/v1/gemini-speak` | `gemini_speak` |
 | POST | `/v1/gemini/chat` | `gemini_chat` |
 | POST | `/v1/gemini/live-token` | `gemini_live_token` |
 | GET | `/v1/gemini/status` | `gemini_status` |
