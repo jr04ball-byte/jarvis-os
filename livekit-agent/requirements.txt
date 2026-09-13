@@ -1,0 +1,4 @@
+livekit-agents[google]==1.8.1
+livekit-api==1.2.1
+httpx>=0.28.1,<1
+python-dotenv==1.0.1

@@ -10,3 +10,11 @@ When upgrading an existing Jarvis installation:
 5. Restart Jarvis and run TEST-JARVIS-V23.bat.
 
 If any API/OAuth secrets have ever been shared in an archive, message, screenshot, or public repository, rotate them after development/testing is complete.
+# Optional LiveKit Cloud voice-to-voice mode. Keep these only in .env.
+# LIVEKIT_URL=wss://your-project.livekit.cloud
+# LIVEKIT_API_KEY=your-livekit-key
+# LIVEKIT_API_SECRET=your-livekit-secret
+# JARVIS_LIVEKIT_ENABLED=false
+# JARVIS_LIVEKIT_AUTO_APPROVE=false
+# JARVIS_LIVEKIT_AGENT_NAME=jarvis-voice
+# JARVIS_LIVEKIT_MODEL=gemini-2.5-flash-native-audio-preview-12-2025

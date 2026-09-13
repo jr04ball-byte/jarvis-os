@@ -9,3 +9,4 @@ scikit-learn==1.5.2
 cryptography==43.0.1
 python-dotenv==1.0.1
 Pillow==10.4.0
+livekit-api==1.2.1
