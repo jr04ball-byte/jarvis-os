@@ -1,6 +1,7 @@
 """Jarvis voice-to-voice worker: LiveKit WebRTC + Gemini Live + gated Jarvis tools."""
 from __future__ import annotations
 
+import datetime
 import json
 import os
 from pathlib import Path
@@ -27,11 +28,16 @@ VOICE_AUTO_APPROVE_TOOLS = frozenset({
 
 class JarvisVoiceAgent(Agent):
     def __init__(self) -> None:
+        now = datetime.datetime.now().astimezone()
+        clock = (f"\nToday is {now.strftime('%A, %B %d, %Y')} and the local time is "
+                 f"{now.strftime('%I:%M %p %Z')}, from the host clock. Treat this as "
+                 "authoritative; never quote a training-data date, a knowledge cutoff, or "
+                 "alternate timelines as the current date, and never pretend you know it differently.")
         super().__init__(instructions=("You are Jarvis, Jerry's concise, warm local system assistant. Speak naturally. "
             "Default to one to three short spoken sentences unless Jerry asks for detail. Begin answering directly without filler. "
             "Never claim you performed a computer, email, calendar, file, web, or Blender action yourself. "
             "For any requested real action, call run_jarvis_command and report its actual result. "
-            "The voice bridge may authorize actions for the authenticated owner. Never claim success unless the tool result confirms it. Do not use camera or video."))
+            "The voice bridge may authorize actions for the authenticated owner. Never claim success unless the tool result confirms it. Do not use camera or video." + clock))
 
     @function_tool
     async def run_jarvis_command(self, context: RunContext, command: str) -> str:
