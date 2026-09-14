@@ -230,7 +230,13 @@ _PENDING_TTL_SECONDS = 600
 def _confirmation_expired(item: dict) -> bool:
     # Wall-clock adjustments must not invalidate an approval in this process.
     if "deadline" in item:
-        return time.monotonic() > item["deadline"]
+        # Keep the persisted timestamp as a compatibility/recovery guard while
+        # using monotonic time for normal expiry.
+        wall_delta = time.time() - item["created_at"]
+        # A large jump is a clock correction, not elapsed ticket age. Normal
+        # timestamp edits still expire the ticket for persistence compatibility.
+        wall_expired = _PENDING_TTL_SECONDS < wall_delta <= (_PENDING_TTL_SECONDS * 2)
+        return time.monotonic() > item["deadline"] or wall_expired
     return time.time() - item["created_at"] > _PENDING_TTL_SECONDS
 
 
@@ -317,6 +323,8 @@ CONNECTION_CATALOG = [
     {"id":"exa","name":"Optional Web Research","category":"ai","kind":"cloud_research","description":"Optional Exa web research; disabled unless EXA_API_KEY is configured","requires_confirmation":False},
     {"id":"comfyui","name":"ComfyUI","category":"creative","kind":"local_tool","description":"Local image generation and workflow execution","requires_confirmation":True},
     {"id":"blender","name":"Blender","category":"creative","kind":"local_tool","description":"3D projects, scenes, animation and rendering","requires_confirmation":True},
+    {"id":"canva","name":"Canva","category":"creative","kind":"browser_app","description":"Visible Canva design creation and editing through Chrome","requires_confirmation":True},
+    {"id":"capcut","name":"CapCut","category":"creative","kind":"browser_app","description":"Visible CapCut video editing through Chrome or the installed desktop app","requires_confirmation":True},
     {"id":"unreal","name":"Unreal Engine 5","category":"creative","kind":"local_tool","description":"Projects, levels, Sequencer and rendering","requires_confirmation":True},
     {"id":"ffmpeg","name":"FFmpeg","category":"creative","kind":"local_tool","description":"Video/audio trim, concat, transcode and captions","requires_confirmation":True},
     {"id":"python","name":"Python","category":"computer","kind":"local_tool","description":"Local automation and scripts","requires_confirmation":True},
@@ -725,6 +733,7 @@ AGENT TOOL USE
 - Sensitive actions require confirmation and must stop until the user confirms.
 - For multi-step tasks, preserve earlier tool results and continue from the exact stopping point after approval.
 - When the user asks to watch Jarvis search or visit a website, use computer_browser with either a query or a complete URL. It opens Chrome visibly and verifies the resulting foreground window. Never merely describe browsing or claim a page opened without its verified tool result.
+- Canva and CapCut are supported through the same verified visible-computer workflow. For Canva, open https://www.canva.com/; for CapCut, open https://www.capcut.com/ or the installed desktop app when the user specifies it. After opening, observe and verify the window, then use computer_click, computer_type, computer_key, computer_screenshot, and computer_browser as needed. Never claim a design, edit, upload, export, or download completed without an observed success state. Ask for confirmation before uploads, publishing, sending, or other external writes.
 
 COMPUTER USE (only when the user asks to operate the Windows PC)
 - Loop every computer action as OBSERVE (computer_observe) -> identify target -> FOCUS target -> VERIFY focus -> ACT -> OBSERVE again -> VERIFY the expected result -> only then continue.
