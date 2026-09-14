@@ -18,8 +18,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from fastapi import HTTPException
-
 METERED_KINDS = {"cloud"}
 DEFAULT_DAILY_BUDGET = 50_000
 
@@ -94,15 +92,12 @@ class DailyBudget:
         return max(0, budget - self.spent_today())
 
     def check(self, provider: str, kind: str) -> None:
-        """Raise 429 if a metered call would exceed today's budget. No-op otherwise."""
-        if kind not in METERED_KINDS:
-            return
-        remaining = self.remaining()
-        if remaining is not None and remaining <= 0:
-            raise HTTPException(
-                429,
-                f"daily cloud token budget exhausted ({daily_budget()} tokens/day); "
-                "resets at UTC midnight or raise JARVIS_DAILY_TOKEN_BUDGET")
+        """Disabled: budget enforcement removed, calls are never blocked.
+
+        Usage is still tracked via record()/spent_today() for visibility;
+        this just no longer raises 429 once the daily cap is hit.
+        """
+        return
 
     def record(self, provider: str, kind: str, usage: dict[str, Any] | None) -> tuple[int, int]:
         """Add a call's token usage to today's ledger. Returns (prompt, completion)."""

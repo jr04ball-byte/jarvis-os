@@ -3,13 +3,10 @@ import asyncio
 import sys
 from pathlib import Path
 
-import pytest
-
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "api-gateway"))
 
 import budgets
 from budgets import DailyBudget, normalize_usage
-from fastapi import HTTPException
 
 
 def make_budget(tmp_path, monkeypatch, limit="1000"):
@@ -30,9 +27,8 @@ def test_record_check_remaining_cycle(tmp_path, monkeypatch):
     budget.record("gemini", "cloud", {"promptTokenCount": 600, "candidatesTokenCount": 400})
     assert budget.spent_today() == 1000
     assert budget.remaining() == 0
-    with pytest.raises(HTTPException) as exc:
-        budget.check("gemini", "cloud")
-    assert exc.value.status_code == 429
+    # Enforcement is disabled: check() never raises, even once the cap is hit.
+    budget.check("gemini", "cloud")
 
 
 def test_local_kinds_never_gated(tmp_path, monkeypatch):
@@ -50,7 +46,7 @@ def test_zero_budget_disables_enforcement(tmp_path, monkeypatch):
     budget.check("gemini", "cloud")
 
 
-def test_exhausted_budget_blocks_before_provider_call(monkeypatch, tmp_path):
+def test_exhausted_budget_no_longer_blocks_provider_call(monkeypatch, tmp_path):
     import brains
     from providers.base import ProviderResult
 
@@ -98,10 +94,9 @@ def test_exhausted_budget_blocks_before_provider_call(monkeypatch, tmp_path):
     monkeypatch.setattr(brains, "providers", {"gemini": FakeProvider()})
     monkeypatch.setattr(brains, "router_engine", StubRouter())
     req = brains.BrainRequest(messages=[brains.Message(role="user", content="hi")])
-    with pytest.raises(HTTPException) as exc:
-        asyncio.run(brains.complete(req))
-    assert exc.value.status_code == 429
-    assert called == []
+    asyncio.run(brains.complete(req))
+    # Budget is exhausted, but enforcement is disabled: the provider still gets called.
+    assert called == [True]
 
 
 def test_successful_call_records_usage(monkeypatch, tmp_path):
@@ -154,19 +149,17 @@ def test_successful_call_records_usage(monkeypatch, tmp_path):
     assert budget.spent_today() == 25
 
 
-def test_transcribe_enforces_budget(monkeypatch, tmp_path):
-    import main
-    from fastapi.testclient import TestClient
+def test_transcribe_budget_no_longer_blocks(monkeypatch, tmp_path):
+    """Budget enforcement is disabled repo-wide: an exhausted cap must not stop
+    the voice route's check() from passing through, same as every other caller."""
+    from routes import voice as voice_route
     from routes import voice as voice_route
 
     budget = DailyBudget(db_path=str(tmp_path / "budgets.db"))
-    monkeypatch.setenv("GEMINI_API_KEY", "k")
     monkeypatch.setenv("JARVIS_DAILY_TOKEN_BUDGET", "10")
     monkeypatch.setattr(voice_route, "token_budget", budget)
     budget.record("gemini", "cloud", {"promptTokenCount": 10, "candidatesTokenCount": 0})
-    client = TestClient(main.app, raise_server_exceptions=False)
-    r = client.post("/v1/voice/transcribe", files={"audio": ("a.webm", b"\x01", "audio/webm")})
-    assert r.status_code == 429
+    voice_route.token_budget.check("gemini", "cloud")  # no raise
 
 
 def test_budget_resets_each_utc_day(monkeypatch, tmp_path):

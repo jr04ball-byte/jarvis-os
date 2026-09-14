@@ -6,7 +6,7 @@ import re
 import time
 from datetime import datetime, timezone
 
-from deps import ARTIFACTS_DIR, db, limiter, orchestrator, rag
+from deps import ARTIFACTS_DIR, db, orchestrator, rag
 from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 from project_worker import inspect_workspace as project_inspect_workspace
 from project_worker import verify_workspace as project_verify_workspace
@@ -102,7 +102,6 @@ async def orchestrator_targets():
 
 
 @router.post("/v1/orchestrator/plan")
-@limiter.limit("20/minute")
 async def orchestrator_plan(request: Request, body: OrchestratorGoal):
     """Create a durable Goal -> Plan -> Tasks project."""
     try:
@@ -129,7 +128,6 @@ async def orchestrator_next(project_id: str):
 
 
 @router.post("/v1/orchestrator/transition")
-@limiter.limit("60/minute")
 async def orchestrator_transition(request: Request, body: OrchestratorTransition):
     try:
         return orchestrator.transition(body.task_id, body.status, body.result, body.error)
@@ -202,7 +200,6 @@ async def upload_file(file: UploadFile = File(...)):
 
 
 @router.post("/v1/orchestrator/execute")
-@limiter.limit("10/minute")
 async def orchestrator_execute(request: Request, body: OrchestratorRunRequest):
     """Run a durable Jarvis plan through the existing agent/tool authority.
 
@@ -336,7 +333,6 @@ Rules:
 
 
 @router.post("/v1/orchestrator/autopilot")
-@limiter.limit("10/minute")
 async def orchestrator_autopilot(request: Request, body: OrchestratorAutopilotRequest):
     """Create a project and immediately run its safe steps."""
     if body.assistant_profile.lower() not in {"general", "sales"}:

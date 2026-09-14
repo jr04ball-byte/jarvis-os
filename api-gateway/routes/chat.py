@@ -21,7 +21,6 @@ from deps import (
     MAX_HISTORY_MESSAGES,
     OLLAMA_URL,
     db,
-    limiter,
     monitor,
     rag,
 )
@@ -54,7 +53,6 @@ async def gemini_status():
 
 
 @router.post("/v1/gemini/chat")
-@limiter.limit("20/minute")
 async def gemini_chat(request: Request, body: GeminiChatRequest):
     """Optional cloud chat. The API key stays server-side; Qwen/Ollama remains the local default."""
     if not GEMINI_API_KEY:
@@ -90,7 +88,6 @@ async def gemini_chat(request: Request, body: GeminiChatRequest):
 
 
 @router.post("/v1/gemini/live-token")
-@limiter.limit("10/minute")
 async def gemini_live_token(request: Request, body: GeminiLiveTokenRequest = GeminiLiveTokenRequest()):
     """Mint a one-use Gemini Live ephemeral token without exposing the API key.
 
@@ -140,7 +137,6 @@ async def gemini_live_token(request: Request, body: GeminiLiveTokenRequest = Gem
 
 
 @router.post("/v1/chat/completions")
-@limiter.limit("30/minute")
 async def chat_completion(request: Request, chat_request: ChatRequest):
     """OpenAI-compatible chat completion with optional persistent memory and RAG."""
     model_messages = apply_system_prompt(list(chat_request.messages), chat_request.assistant_profile)
@@ -282,7 +278,6 @@ async def chat_completion(request: Request, chat_request: ChatRequest):
 
 
 @router.post("/v1/sales/chat")
-@limiter.limit("30/minute")
 async def sales_chat(request: Request, chat_request: ChatRequest):
     """Sales Machine endpoint. Independent from the Email Agent SaaS."""
     sales_request = chat_request.model_copy(update={"assistant_profile": "sales"})
@@ -290,7 +285,6 @@ async def sales_chat(request: Request, chat_request: ChatRequest):
 
 
 @router.post("/v1/chat/completions-rag")
-@limiter.limit("20/minute")
 async def chat_with_rag(request: Request, chat_request: ChatRequest):
     """Chat with RAG context augmentation without polluting stored memory."""
     chat_request.use_rag = True
@@ -298,7 +292,6 @@ async def chat_with_rag(request: Request, chat_request: ChatRequest):
 
 
 @router.post("/v1/compare")
-@limiter.limit("5/minute")
 async def compare_models(
     request: Request,
     body: CompareRequest,

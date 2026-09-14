@@ -17,7 +17,6 @@ from deps import (
     JARVIS_MAX_CONTEXT_CHARS,
     MAX_HISTORY_MESSAGES,
     db,
-    limiter,
 )
 from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
@@ -191,7 +190,6 @@ async def deepgram_status():
 
 
 @router.post("/v1/voice/transcribe")
-@limiter.limit("30/minute")
 async def transcribe_voice(request: Request, audio: UploadFile = File(...)):
     """Transcribe one bounded PTT recording locally or through explicit Gemini use."""
     payload = await audio.read(20 * 1024 * 1024 + 1)
@@ -277,7 +275,6 @@ async def voice_engine_js():
 
 
 @router.post("/v1/voice/turn")
-@limiter.limit("30/minute")
 async def voice_turn(request: Request, body: VoiceTurnRequest):
     """Unified voice turn: tool-intent speech runs the agent (JSON), everything
     else streams auto-routed chat (SSE) so TTS can start on the first sentence."""

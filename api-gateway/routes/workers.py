@@ -6,7 +6,7 @@ import time
 
 import local_tools
 from brains import providers as intelligence_providers
-from deps import limiter, orchestrator, project_worker_runs
+from deps import orchestrator, project_worker_runs
 from fastapi import APIRouter, HTTPException, Request
 from project_worker import capture_git_diff as project_capture_diff
 from project_worker import inspect_workspace as project_inspect_workspace
@@ -53,7 +53,6 @@ router = APIRouter()
 
 
 @router.post("/v1/opencode/task")
-@limiter.limit("10/minute")
 async def run_opencode_task(request: Request, body: OpenCodeTaskRequest):
     """Read-only OpenCode relay scoped to an exact registered workspace.
 
@@ -139,7 +138,6 @@ async def execute_tool(req: ToolRequest):
 
 
 @router.post("/v1/project-worker/inspect")
-@limiter.limit("20/minute")
 async def project_worker_inspect(request: Request, body: ProjectWorkerTargetRequest):
     target = _project_worker_target(body.target)
     try:
@@ -150,7 +148,6 @@ async def project_worker_inspect(request: Request, body: ProjectWorkerTargetRequ
 
 
 @router.post("/v1/project-worker/health")
-@limiter.limit("20/minute")
 async def project_worker_health(request: Request, body: ProjectWorkerTargetRequest):
     target = _project_worker_target(body.target)
     try:
@@ -161,7 +158,6 @@ async def project_worker_health(request: Request, body: ProjectWorkerTargetReque
 
 
 @router.post("/v1/project-worker/verify")
-@limiter.limit("10/minute")
 async def project_worker_verify(request: Request, body: ProjectWorkerVerifyRequest):
     target = _project_worker_target(body.target)
     try:
@@ -175,7 +171,6 @@ async def project_worker_verify(request: Request, body: ProjectWorkerVerifyReque
 
 
 @router.post("/v1/project-worker/implement")
-@limiter.limit("5/minute")
 async def project_worker_implement(request: Request, body: ProjectWorkerImplementRequest):
     """Run one bounded OpenCode implementation cycle inside a registered workspace."""
     target = _project_worker_target(body.target)
@@ -221,7 +216,6 @@ async def project_worker_run(run_id: str):
 
 
 @router.post("/v1/project-worker/autofix")
-@limiter.limit("3/minute")
 async def project_worker_autofix(request: Request, body: ProjectWorkerAutofixRequest):
     """Bounded diagnose -> implement -> verify -> repair loop with durable run state."""
     return await _run_project_autofix_cycle(body)
@@ -253,7 +247,6 @@ async def computer_observe_route():
 
 
 @router.post("/v1/agent/chat")
-@limiter.limit("20/minute")
 async def agent_chat(request: Request, body: AgentChatRequest):
     """Multi-step local agent. Read-only tools run immediately; sensitive actions pause for approval."""
     if body.assistant_profile.lower() not in {"general", "sales"}:
@@ -267,7 +260,6 @@ async def agent_chat(request: Request, body: AgentChatRequest):
 
 
 @router.post("/v1/agent/confirm")
-@limiter.limit("30/minute")
 async def agent_confirm(request: Request, body: ConfirmationRequest):
     """Approve one exact pending action and resume its original multi-step task."""
     if not body.confirmed:

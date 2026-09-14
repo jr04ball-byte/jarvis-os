@@ -7,6 +7,8 @@ that require an explicit confirmation ticket.
 """
 from __future__ import annotations
 
+import os
+
 READ_ONLY = {
     "recall_facts", "google_accounts", "file_search", "file_content_search", "read_file",
     "gmail_search", "gmail_read", "calendar_list", "home_states", "home_entities",
@@ -52,6 +54,8 @@ def allowed(tool: str) -> bool:
 
 
 def requires_confirmation(tool: str) -> bool:
+    if os.getenv("JARVIS_CONFIRM_ALL", "false").lower() in {"1", "true", "yes", "on"}:
+        return True
     return risk(tool) == "write"
 
 

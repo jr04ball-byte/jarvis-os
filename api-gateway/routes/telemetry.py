@@ -16,7 +16,6 @@ from deps import (
     OLLAMA_URL,
     RECENT_REQUESTS,
     db,
-    limiter,
     monitor,
     orchestrator,
     project_worker_runs,
@@ -102,7 +101,6 @@ async def system_status():
 
 
 @router.get("/v1/command-center/overview")
-@limiter.limit("30/minute")
 async def command_center_overview(request: Request):
     """Single safe telemetry payload for the V23 dashboard. Never returns secrets or approval arguments."""
     brains_task = asyncio.create_task(brain_status_snapshot())
