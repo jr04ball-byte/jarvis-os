@@ -78,16 +78,3 @@ def test_adaptive_compute_manager_has_safe_modes(monkeypatch):
     assert selected['mode'] == 'hybrid'
     assert selected['options']['num_gpu'] >= 1
 
-def test_confirm_all_switch_gates_every_tool(monkeypatch):
-    import security
-    monkeypatch.delenv('JARVIS_CONFIRM_ALL', raising=False)
-    assert security.requires_confirmation('computer_open') is True
-    assert security.requires_confirmation('read_file') is False
-    assert security.requires_confirmation('connections_inventory') is False
-    monkeypatch.setenv('JARVIS_CONFIRM_ALL', 'true')
-    assert security.requires_confirmation('read_file') is True
-    assert security.requires_confirmation('connections_inventory') is True
-    assert security.requires_confirmation('computer_open') is True
-    assert security.requires_confirmation('recall_facts') is True
-    monkeypatch.setenv('JARVIS_CONFIRM_ALL', 'false')
-    assert security.requires_confirmation('read_file') is False

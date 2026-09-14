@@ -54,8 +54,6 @@ def allowed(tool: str) -> bool:
 
 
 def requires_confirmation(tool: str) -> bool:
-    if os.getenv("JARVIS_CONFIRM_ALL", "false").lower() in {"1", "true", "yes", "on"}:
-        return True
     return risk(tool) == "write"
 
 
